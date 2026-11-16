@@ -27,6 +27,8 @@ public static class Program
             TrayController.Shared.Install();
             TypingMonitor.Shared.Apply();
             Screenshot.ApplyHotkey();
+            ClipboardService.Start();
+            DesktopWidget.Start();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };

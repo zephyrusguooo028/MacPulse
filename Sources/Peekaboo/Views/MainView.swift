@@ -12,14 +12,19 @@ struct MainView: View {
                 Section(L("监控", "Monitor")) {
                     SidebarRow(tab: .overview)
                     SidebarRow(tab: .processes)
+                    SidebarRow(tab: .battery)
+                    SidebarRow(tab: .network)
                 }
                 Section(L("空间", "Storage")) {
                     SidebarRow(tab: .disk)
                     SidebarRow(tab: .projects)
                     SidebarRow(tab: .cleanup)
+                    SidebarRow(tab: .duplicates)
+                    SidebarRow(tab: .uninstall)
                 }
                 Section(L("工具", "Tools")) {
                     SidebarRow(tab: .screenshot)
+                    SidebarRow(tab: .clipboard)
                     SidebarRow(tab: .typing)
                 }
                 Section {
@@ -39,6 +44,11 @@ struct MainView: View {
                 case .cleanup: CleanupView()
                 case .typing: TypingView()
                 case .screenshot: ScreenshotView()
+                case .battery: BatteryView()
+                case .network: NetworkView()
+                case .duplicates: DuplicatesView()
+                case .uninstall: UninstallView()
+                case .clipboard: ClipboardView()
                 case .settings: SettingsView()
                 }
             }
@@ -60,6 +70,11 @@ extension MainTab {
         case .cleanup: return Color(red: 0.93, green: 0.36, blue: 0.55)
         case .typing: return Palette.mem
         case .screenshot: return Color(red: 0.25, green: 0.70, blue: 0.85)
+        case .battery: return Color(red: 0.30, green: 0.75, blue: 0.35)
+        case .network: return Palette.netIn
+        case .duplicates: return Color(red: 0.85, green: 0.55, blue: 0.20)
+        case .uninstall: return Color(red: 0.80, green: 0.30, blue: 0.35)
+        case .clipboard: return Color(red: 0.45, green: 0.50, blue: 0.95)
         case .settings: return Color(red: 0.55, green: 0.56, blue: 0.60)
         }
     }
@@ -129,6 +144,11 @@ private struct SidebarRow: View {
         case .typing:
             return TypingMonitor.shared.running ? ("\(TypingMonitor.shared.today.total)", false) : nil
         case .screenshot: return app.settings.shotHotkey.map { ($0.title, false) }
+        case .battery: return BatteryView.badge.map { ($0, false) }
+        case .network: return NetworkView.badge.map { ($0, false) }
+        case .duplicates: return DuplicatesView.badge.map { ($0, false) }
+        case .uninstall: return nil
+        case .clipboard: return ClipboardView.badge.map { ($0, false) }
         case .settings: return nil
         }
     }

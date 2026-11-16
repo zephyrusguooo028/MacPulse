@@ -165,6 +165,9 @@ struct SettingsView: View {
                 pathList(title: L("项目目录", "Project folders"), symbol: "folder", note: L("在这些目录里自动找开发项目（最多往下找 4 层）。", "Development projects are found automatically in these folders (up to 4 levels deep)."), paths: $s.projectRoots)
                 pathList(title: L("白名单", "Whitelist"), symbol: "lock.shield", note: L("这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", "These locations are never cleaned. You can also right-click any list item and choose “Add to whitelist”."), paths: $s.whitelist)
 
+                ClipboardSettingsCard()
+                WidgetSettingsCard()
+
                 Card(L("关于", "About"), symbol: "info.circle") {
                     Text(L("Peekaboo 只在本机读取系统信息，不联网、不上传任何数据。清理默认移到废纸篓，并且永远不碰系统目录和用户目录之外的文件。", "Peekaboo reads system information locally only. It never goes online or uploads any data. Cleanup moves items to the Trash by default and never touches system folders or files outside your home folder."))
                         .font(.callout).foregroundStyle(.secondary)

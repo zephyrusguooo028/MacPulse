@@ -87,9 +87,9 @@ public sealed class MainWindow : Window
             if (title.Length > 0) { var h = T(title, 11, FontWeights.SemiBold, Theme.Tertiary); h.Margin = new Thickness(10, 10, 0, 4); _nav.Children.Add(h); }
             foreach (var p in pages) _nav.Children.Add(NavItem(p));
         }
-        Group(L("监控", "Monitor"), Page.Overview, Page.Processes);
-        Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup);
-        Group(L("工具", "Tools"), Page.Screenshot, Page.Typing);
+        Group(L("监控", "Monitor"), Page.Overview, Page.Processes, Page.Battery, Page.Network);
+        Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup, Page.Duplicates, Page.Uninstall);
+        Group(L("工具", "Tools"), Page.Screenshot, Page.Clipboard, Page.Typing);
         var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
         _nav.Children.Add(NavItem(Page.Settings));
     }
@@ -111,6 +111,11 @@ public sealed class MainWindow : Window
         Page.Cleanup => (L("清理", "Cleanup"), "\uE74D", Color.FromRgb(237, 92, 140)),
         Page.Typing => (L("打字", "Typing"), "\uE765", Theme.MemC),
         Page.Screenshot => (L("截图", "Screenshot"), "\uE722", Color.FromRgb(64, 178, 217)),
+        Page.Battery => (L("电池", "Battery"), "\uEBA7", Color.FromRgb(77, 191, 89)),
+        Page.Network => (L("网络", "Network"), "\uE968", Theme.NetInC),
+        Page.Duplicates => (L("重复文件", "Duplicates"), "\uE8C8", Color.FromRgb(217, 140, 51)),
+        Page.Uninstall => (L("卸载应用", "Uninstall"), "\uE74D", Color.FromRgb(204, 77, 89)),
+        Page.Clipboard => (L("剪贴板", "Clipboard"), "\uE77F", Color.FromRgb(115, 128, 242)),
         _ => (L("设置", "Settings"), "\uE713", Color.FromRgb(140, 143, 153)),
     };
 
@@ -172,6 +177,11 @@ public sealed class MainWindow : Window
             Page.Processes => new ProcessesPage(),
             Page.Cleanup => new CleanupPage(),
             Page.Typing => new TypingPage(),
+            Page.Battery => new BatteryPage(),
+            Page.Network => new NetworkPage(),
+            Page.Duplicates => new DuplicatesPage(),
+            Page.Uninstall => new UninstallPage(),
+            Page.Clipboard => new ClipboardPage(),
             Page.Screenshot => new ScreenshotPage(),
             _ => new SettingsPage(),
         };
@@ -191,6 +201,11 @@ public sealed class MainWindow : Window
         long rec = CleanupModel.Shared.All.Where(i => i.Recommended).Sum(i => i.Size);
         SetBadge(Page.Cleanup, rec > 0 ? Fmt.Bytes(rec) : null);
         SetBadge(Page.Typing, TypingMonitor.Shared.Running ? TypingMonitor.Shared.Today.Total.ToString("N0") : null);
+        SetBadge(Page.Battery, BatteryPage.Badge);
+        SetBadge(Page.Network, NetworkPage.Badge);
+        SetBadge(Page.Duplicates, DuplicatesPage.Badge);
+        SetBadge(Page.Uninstall, null);
+        SetBadge(Page.Clipboard, ClipboardPage.Badge);
         SetBadge(Page.Screenshot, null); // the shortcut is shown on the Screenshot page; it crowds the label here
         SetBadge(Page.Settings, null);
 

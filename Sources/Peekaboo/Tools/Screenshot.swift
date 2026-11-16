@@ -295,6 +295,13 @@ final class ScreenshotController {
         }
     }
 
+    /// Recognize text in the current selection (implemented in Tools/ShotOCR.swift).
+    func ocr() {
+        guard let img = active?.export() else { return }
+        finish()
+        ShotOCR.run(image: img)
+    }
+
     func pin() {
         guard let s = active, let img = s.export(), let sel = s.selection else { return }
         let origin = NSPoint(x: s.screen.frame.minX + sel.minX, y: s.screen.frame.maxY - sel.maxY)
@@ -551,6 +558,7 @@ private struct ShotToolbar: View {
                 }
                 divider
                 button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), label: L("撤销", "Undo"), selected: false) { ScreenshotController.shared.undo() }
+                button("text.viewfinder", L("识别图中文字", "Recognize text"), label: L("识字", "OCR"), selected: false) { ScreenshotController.shared.ocr() }
                 button("pin", L("贴到屏幕", "Pin to screen"), label: L("贴图", "Pin"), selected: false) { ScreenshotController.shared.pin() }
                 button("square.and.arrow.down", L("保存", "Save"), label: L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
                 button("xmark", L("取消 Esc", "Cancel Esc"), label: L("取消", "Cancel"), selected: false) { ScreenshotController.shared.finish() }

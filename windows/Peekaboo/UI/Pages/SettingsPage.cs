@@ -166,6 +166,7 @@ public sealed class SettingsPage : PageView
         var page = V(16, PageHeader(L("设置", "Settings"), "Peekaboo 1.0"), language, tray, general, alerts, rules,
             PathList(L("项目目录", "Project folders"), "", L("在这些目录里自动找开发项目（最多往下找 4 层）。", "Peekaboo looks for development projects in these folders (up to 4 levels deep)."), S.ProjectRoots),
             PathList(L("白名单", "Whitelist"), "", L("这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", "These locations are never cleaned. You can also right-click any item in a list and choose “Add to whitelist”."), S.Whitelist),
+            ClipboardSettingsCard.Build(), WidgetSettingsCard.Build(),
             about);
         page.MaxWidth = 820; page.HorizontalAlignment = HorizontalAlignment.Left;
         Content = page;

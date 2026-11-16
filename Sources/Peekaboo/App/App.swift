@@ -37,7 +37,7 @@ enum Entry {
 }
 
 enum MainTab: String, CaseIterable, Identifiable {
-    case overview, disk, projects, processes, cleanup, typing, screenshot, settings
+    case overview, disk, projects, processes, cleanup, typing, screenshot, battery, network, duplicates, uninstall, clipboard, settings
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -48,6 +48,11 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .cleanup: return L("清理", "Clean up")
         case .typing: return L("打字", "Typing")
         case .screenshot: return L("截图", "Screenshot")
+        case .battery: return L("电池", "Battery")
+        case .network: return L("网络", "Network")
+        case .duplicates: return L("重复文件", "Duplicates")
+        case .uninstall: return L("卸载应用", "Uninstall")
+        case .clipboard: return L("剪贴板", "Clipboard")
         case .settings: return L("设置", "Settings")
         }
     }
@@ -60,6 +65,11 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .cleanup: return "sparkles"
         case .typing: return "keyboard"
         case .screenshot: return "camera.viewfinder"
+        case .battery: return "battery.75percent"
+        case .network: return "network"
+        case .duplicates: return "doc.on.doc"
+        case .uninstall: return "trash.square"
+        case .clipboard: return "list.clipboard"
         case .settings: return "gearshape"
         }
     }
@@ -109,6 +119,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             TypingMonitor.shared.apply()
             ScreenshotController.shared.applyHotkey()
+            ClipboardService.startIfEnabled()
+            DesktopWidget.startIfEnabled()
             AlertManager.shared.setup()
             if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
                 Snapshot.run(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))

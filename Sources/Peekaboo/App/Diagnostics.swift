@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import SwiftUI
 
-/// `MacPulse --selftest`: prints every reading and scan result without any UI.
+/// `Peekaboo --selftest`: prints every reading and scan result without any UI.
 enum SelfTest {
     static func run() {
         let cpu = CPUReader()
@@ -56,7 +56,7 @@ enum SelfTest {
     }
 }
 
-/// `MacPulse --snapshot <dir>`: opens every page with live data and saves PNGs.
+/// `Peekaboo --snapshot <dir>`: opens every page with live data and saves PNGs.
 /// Used to check the UI without needing screen-recording permission.
 @MainActor
 enum Snapshot {
@@ -156,7 +156,7 @@ enum Snapshot {
     }
 }
 
-/// `MacPulse --icon-sheet <file.png>`: every icon × every frame, on light and dark
+/// `Peekaboo --icon-sheet <file.png>`: every icon × every frame, on light and dark
 /// menu-bar backgrounds, plus the load-tinted variant.
 enum IconSheet {
     @MainActor
@@ -194,7 +194,7 @@ enum IconSheet {
     }
 }
 
-/// `MacPulse --shot-demo <dir>`: renders the capture overlay and an export from a
+/// `Peekaboo --shot-demo <dir>`: renders the capture overlay and an export from a
 /// synthetic screen image, so the editor can be checked without screen recording.
 enum ShotDemo {
     @MainActor
@@ -212,7 +212,7 @@ enum ShotDemo {
         NSGradient(colors: [NSColor(red: 0.3, green: 0.4, blue: 0.8, alpha: 1), NSColor(red: 0.8, green: 0.4, blue: 0.6, alpha: 1)])!.draw(in: NSRect(origin: .zero, size: size), angle: 45)
         let w1 = NSRect(x: 120, y: size.height - 520, width: 640, height: 400)
         NSColor.white.setFill(); NSBezierPath(roundedRect: w1, xRadius: 10, yRadius: 10).fill()
-        ("MacPulse 截图测试窗口\n这里有一些文字，用来测试马赛克和标注。" as NSString).draw(in: w1.insetBy(dx: 30, dy: 60), withAttributes: [.font: NSFont.systemFont(ofSize: 26), .foregroundColor: NSColor.black])
+        ("Peekaboo 截图测试窗口\n这里有一些文字，用来测试马赛克和标注。" as NSString).draw(in: w1.insetBy(dx: 30, dy: 60), withAttributes: [.font: NSFont.systemFont(ofSize: 26), .foregroundColor: NSColor.black])
         NSColor(white: 0.15, alpha: 1).setFill(); NSBezierPath(roundedRect: NSRect(x: 820, y: size.height - 420, width: 360, height: 260), xRadius: 10, yRadius: 10).fill()
         NSGraphicsContext.restoreGraphicsState()
         guard let cg = rep.cgImage else { return }

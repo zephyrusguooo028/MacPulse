@@ -18,11 +18,11 @@ struct ScreenshotView: View {
 
                 if !permission {
                     Card("需要「屏幕录制」权限", symbol: "lock.shield") {
-                        Text("macOS 要求截图的应用获得「屏幕录制」权限。截图只保存在你的电脑上，不会上传。授权后可能需要重新打开 MacPulse。")
+                        Text("macOS 要求截图的应用获得「屏幕录制」权限。截图只保存在你的电脑上，不会上传。授权后可能需要重新打开 Peekaboo。")
                             .foregroundStyle(.secondary)
                         HStack {
                             Button("去授权") { ScreenshotController.shared.start() }.buttonStyle(.borderedProminent)
-                            Button("重启 MacPulse") { AppRelaunch.now() }
+                            Button("重启 Peekaboo") { AppRelaunch.now() }
                         }
                         .task {
                             while !Task.isCancelled && !permission {

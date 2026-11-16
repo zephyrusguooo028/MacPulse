@@ -28,7 +28,7 @@ final class AlertManager: NSObject, UNUserNotificationCenterDelegate {
             let gb = Double(m.disk.available) / 1_073_741_824
             if gb < Double(s.alertDiskGB) {
                 fire("disk", cooldown: 6 * 3600, title: "磁盘空间不足",
-                     body: "只剩 \(Fmt.bytes(m.disk.available))，打开 MacPulse 看看哪些可以清理。", tab: .cleanup)
+                     body: "只剩 \(Fmt.bytes(m.disk.available))，打开 Peekaboo 看看哪些可以清理。", tab: .cleanup)
             }
         }
 
@@ -78,7 +78,7 @@ final class AlertManager: NSObject, UNUserNotificationCenterDelegate {
     private func fire(_ key: String, cooldown: TimeInterval, title: String, body: String, tab: MainTab) {
         if let l = lastFired[key], Date().timeIntervalSince(l) < cooldown { return }
         lastFired[key] = Date()
-        guard available else { NSLog("MacPulse alert: \(title) — \(body)"); return }
+        guard available else { NSLog("Peekaboo alert: \(title) — \(body)"); return }
         let c = UNMutableNotificationContent()
         c.title = title
         c.body = body

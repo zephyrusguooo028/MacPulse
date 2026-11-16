@@ -15,7 +15,7 @@ final class Hotkeys {
         installHandler()
         unregister(id: id)
         var ref: EventHotKeyRef?
-        let hkID = EventHotKeyID(signature: OSType(0x4D50_4C53), id: id) // "MPLS"
+        let hkID = EventHotKeyID(signature: OSType(0x5045_4B42), id: id) // "PEKB"
         if RegisterEventHotKey(keyCode, modifiers, hkID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
             refs[id] = ref
             actions[id] = action

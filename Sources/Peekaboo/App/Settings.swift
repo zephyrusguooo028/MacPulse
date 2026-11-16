@@ -109,7 +109,7 @@ final class AppSettings {
             do {
                 if newValue { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             } catch {
-                NSLog("MacPulse: launch-at-login change failed: \(error)")
+                NSLog("Peekaboo: launch-at-login change failed: \(error)")
             }
         }
     }

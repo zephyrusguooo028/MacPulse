@@ -143,7 +143,7 @@ enum Paths {
 
     static var support: URL {
         let u = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MacPulse", isDirectory: true)
+            .appendingPathComponent("Peekaboo", isDirectory: true)
         try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
         return u
     }

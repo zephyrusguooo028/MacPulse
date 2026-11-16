@@ -74,7 +74,7 @@ private struct SidebarBrand: View {
                 .frame(width: 34, height: 34)
                 .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Palette.theme.opacity(0.14)))
             VStack(alignment: .leading, spacing: 1) {
-                Text("MacPulse").font(.system(size: 14, weight: .semibold, design: .rounded))
+                Text("Peekaboo").font(.system(size: 14, weight: .semibold, design: .rounded))
                 Text(statusSentence(app.monitor, app.settings)).font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
             }
         }

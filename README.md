@@ -1,4 +1,4 @@
-# MacPulse
+# Peekaboo
 
 A native macOS menu bar app: system monitor, disk analyzer and cleaner, written in SwiftUI.
 
@@ -49,7 +49,7 @@ cd MacPulse
 ./scripts/install.sh   # builds, copies to /Applications and launches
 ```
 
-只想构建不想安装：`./scripts/build.sh`，产物在 `build/MacPulse.app`。
+只想构建不想安装：`./scripts/build.sh`，产物在 `build/Peekaboo.app`。
 
 The app is ad-hoc signed. Some folders (Mail, Messages, Trash) need **Full Disk Access** to be measured; Settings has a shortcut to grant it.
 
@@ -57,9 +57,9 @@ The app is ad-hoc signed. Some folders (Mail, Messages, Trash) need **Full Disk 
 
 ```bash
 swift build
-.build/debug/MacPulse --selftest                 # print every reading and scan result, no UI
-.build/debug/MacPulse --icon-sheet icons.png     # render all icon frames
-.build/debug/MacPulse --snapshot shots/          # open every page and save screenshots
+.build/debug/Peekaboo --selftest                 # print every reading and scan result, no UI
+.build/debug/Peekaboo --icon-sheet icons.png     # render all icon frames
+.build/debug/Peekaboo --snapshot shots/          # open every page and save screenshots
 ```
 
 Notes:
@@ -71,7 +71,7 @@ Notes:
 ## 结构 Layout
 
 ```
-Sources/MacPulse/
+Sources/Peekaboo/
   App/        entry point, settings, status item, alerts, diagnostics
   Metrics/    CPU, memory, disk, network, GPU, battery, temperature, processes, history
   Disk/       disk tree scanner, project scanner

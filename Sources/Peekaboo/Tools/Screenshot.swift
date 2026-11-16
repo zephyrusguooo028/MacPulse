@@ -171,7 +171,7 @@ final class ScreenshotController {
         guard windows.isEmpty else { return }
         guard hasPermission else {
             _ = CGRequestScreenCaptureAccess()
-            if FileActions.confirm("需要「屏幕录制」权限", "截图需要在 系统设置 › 隐私与安全性 › 屏幕录制 里允许 MacPulse。授权后可能需要重新打开 MacPulse。", ok: "打开系统设置", destructive: false),
+            if FileActions.confirm("需要「屏幕录制」权限", "截图需要在 系统设置 › 隐私与安全性 › 屏幕录制 里允许 Peekaboo。授权后可能需要重新打开 Peekaboo。", ok: "打开系统设置", destructive: false),
                let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
                 NSWorkspace.shared.open(u)
             }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds build/MacPulse.app (release, ad-hoc signed). Needs only the Command Line Tools.
+# Builds build/Peekaboo.app (release, ad-hoc signed). Needs only the Command Line Tools.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
@@ -13,13 +13,13 @@ if [ ! -f build/AppIcon.icns ]; then
   iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
 fi
 swift build -c release
-APP=build/MacPulse.app
+APP=build/Peekaboo.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/MacPulse "$APP/Contents/MacOS/MacPulse"
+cp .build/release/Peekaboo "$APP/Contents/MacOS/Peekaboo"
 cp scripts/Info.plist "$APP/Contents/Info.plist"
 cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # Ad-hoc signature, but with a designated requirement on the bundle id only, so macOS
 # privacy permissions (Input Monitoring, Screen Recording) survive rebuilds.
-codesign --force --sign - --timestamp=none -r='designated => identifier "local.macpulse.app"' "$APP"
+codesign --force --sign - --timestamp=none -r='designated => identifier "local.peekaboo.app"' "$APP"
 echo "Built $APP"

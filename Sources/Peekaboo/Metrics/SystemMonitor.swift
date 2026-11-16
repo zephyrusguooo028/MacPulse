@@ -139,7 +139,7 @@ final class SystemMonitor {
         memory = MemoryReader.read()
         let n = netReader.read()
         netIn = n.inRate; netOut = n.outRate
-        // Slow-changing readings are refreshed less often to keep MacPulse light.
+        // Slow-changing readings are refreshed less often to keep Peekaboo light.
         if tick % 10 == 1 {
             disk = DiskReader.read()
             battery = BatteryReader.read()

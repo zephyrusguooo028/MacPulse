@@ -177,7 +177,7 @@ struct OverviewView: View {
     private func historyChart(_ m: SystemMonitor) -> some View {
         let pts = m.history
         if pts.count < 2 {
-            EmptyHint(symbol: "clock", title: "正在记录", detail: "MacPulse 每分钟记一个点，保留 24 小时。运行一会儿就能看到曲线。")
+            EmptyHint(symbol: "clock", title: "正在记录", detail: "Peekaboo 每分钟记一个点，保留 24 小时。运行一会儿就能看到曲线。")
         } else {
             Chart {
                 ForEach(pts) { p in

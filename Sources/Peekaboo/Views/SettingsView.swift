@@ -10,7 +10,7 @@ struct SettingsView: View {
         @Bindable var s = app.settings
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "设置", subtitle: "MacPulse 1.0") { EmptyView() }
+                PageHeader(title: "设置", subtitle: "Peekaboo 1.0") { EmptyView() }
 
                 Card("菜单栏", symbol: "menubar.rectangle") {
                     Picker("点开后的面板", selection: $s.popoverStyle) {
@@ -113,8 +113,8 @@ struct SettingsView: View {
                             let actual = AppSettings.shared.launchAtLogin
                             if actual != v {
                                 loginError = AppSettings.shared.launchAtLoginNeedsApproval
-                                    ? "需要在 系统设置 › 通用 › 登录项 里允许 MacPulse。"
-                                    : "设置失败。请把 MacPulse.app 放到「应用程序」文件夹后再试。"
+                                    ? "需要在 系统设置 › 通用 › 登录项 里允许 Peekaboo。"
+                                    : "设置失败。请把 Peekaboo.app 放到「应用程序」文件夹后再试。"
                             } else { loginError = nil }
                         }
                     if let e = loginError { Text(e).font(.caption).foregroundStyle(Palette.warn) }
@@ -158,7 +158,7 @@ struct SettingsView: View {
                 pathList(title: "白名单", symbol: "lock.shield", note: "这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", paths: $s.whitelist)
 
                 Card("关于", symbol: "info.circle") {
-                    Text("MacPulse 只在本机读取系统信息，不联网、不上传任何数据。清理默认移到废纸篓，并且永远不碰系统目录和用户目录之外的文件。")
+                    Text("Peekaboo 只在本机读取系统信息，不联网、不上传任何数据。清理默认移到废纸篓，并且永远不碰系统目录和用户目录之外的文件。")
                         .font(.callout).foregroundStyle(.secondary)
                     Text("数据保存在 \(Paths.support.tildePath)").font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
                 }

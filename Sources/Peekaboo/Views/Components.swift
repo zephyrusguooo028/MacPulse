@@ -198,7 +198,7 @@ struct EmptyHint: View {
 }
 
 enum AppRelaunch {
-    /// Quits and reopens MacPulse; some privacy permissions only apply after a restart.
+    /// Quits and reopens Peekaboo; some privacy permissions only apply after a restart.
     static func now() {
         let path = Bundle.main.bundlePath
         let p = Process()
@@ -243,7 +243,7 @@ enum FileActions {
             return false
         }
         if AppSettings.shared.isWhitelisted(url) {
-            _ = confirm("这个位置在白名单里", "\(url.tildePath) 已被加入白名单，MacPulse 不会删除它。", ok: "好", destructive: false)
+            _ = confirm("这个位置在白名单里", "\(url.tildePath) 已被加入白名单，Peekaboo 不会删除它。", ok: "好", destructive: false)
             return false
         }
         guard confirm("移到废纸篓？", "\(url.tildePath)\n\(Fmt.bytes(size))\n\n可以在废纸篓里恢复。", ok: "移到废纸篓") else { return false }

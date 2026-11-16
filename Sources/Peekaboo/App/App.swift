@@ -4,6 +4,8 @@ import AppKit
 @main
 enum Entry {
     static func main() {
+        Migration.fromMacPulse()
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
         let args = CommandLine.arguments
         if let i = args.firstIndex(of: "--icon-sheet"), i + 1 < args.count {
             MainActor.assumeIsolated { IconSheet.run(to: URL(fileURLWithPath: args[i + 1])) }
@@ -14,11 +16,23 @@ enum Entry {
             MainActor.assumeIsolated { ShotDemo.run(to: URL(fileURLWithPath: args[i + 1])) }
             exit(0)
         }
+        if let i = args.firstIndex(of: "--perm-check"), i + 1 < args.count {
+            // Run through `open` so macOS attributes the request to this app, not a terminal.
+            var lines = ["bundle=\(Bundle.main.bundleIdentifier ?? "nil") path=\(Bundle.main.bundlePath)"]
+            lines.append("listenPreflight=\(CGPreflightListenEventAccess())")
+            lines.append("screenPreflight=\(CGPreflightScreenCaptureAccess())")
+            let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+            let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .tailAppendEventTap, options: .listenOnly, eventsOfInterest: mask,
+                                        callback: { _, _, e, _ in Unmanaged.passUnretained(e) }, userInfo: nil)
+            lines.append("tapCreated=\(tap != nil)")
+            try? lines.joined(separator: "\n").write(toFile: args[i + 1], atomically: true, encoding: .utf8)
+            exit(0)
+        }
         if args.contains("--selftest") {
             SelfTest.run()
             exit(0)
         }
-        MacPulseApp.main()
+        PeekabooApp.main()
     }
 }
 
@@ -64,13 +78,14 @@ final class AppState {
     var tab: MainTab = .overview
 }
 
-struct MacPulseApp: App {
+struct PeekabooApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     var body: some Scene {
         // The menu bar item and windows are managed through AppKit (StatusItemController,
-        // WindowManager); SwiftUI only needs a scene to exist.
-        Settings { EmptyView() }
+        // WindowManager). SwiftUI only needs a scene to exist; a Settings scene would be
+        // opened as an empty window at launch, so use a menu bar extra that is never inserted.
+        MenuBarExtra("Peekaboo", isInserted: .constant(false)) { EmptyView() }
     }
 }
 
@@ -120,7 +135,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
         if window == nil {
             let host = NSHostingController(rootView: MainView().environment(AppState.shared))
             let w = NSWindow(contentViewController: host)
-            w.title = "MacPulse"
+            w.title = "Peekaboo"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.toolbarStyle = .unified
@@ -129,7 +144,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.center()
-            w.setFrameAutosaveName("MacPulseMain")
+            w.setFrameAutosaveName("PeekabooMain")
             window = w
         }
         NSApp.setActivationPolicy(.regular)
@@ -139,5 +154,23 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+    }
+}
+
+/// One-time move from the app's old name (MacPulse, local.macpulse.app).
+enum Migration {
+    static func fromMacPulse() {
+        let d = UserDefaults.standard
+        guard !d.bool(forKey: "migratedFromMacPulse") else { return }
+        if let old = d.persistentDomain(forName: "local.macpulse.app") {
+            for (k, v) in old where d.object(forKey: k) == nil { d.set(v, forKey: k) }
+        }
+        let fm = FileManager.default
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let oldDir = base.appendingPathComponent("MacPulse"), newDir = base.appendingPathComponent("Peekaboo")
+        if fm.fileExists(atPath: oldDir.path) && !fm.fileExists(atPath: newDir.path) {
+            try? fm.moveItem(at: oldDir, to: newDir)
+        }
+        d.set(true, forKey: "migratedFromMacPulse")
     }
 }

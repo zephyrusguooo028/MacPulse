@@ -448,11 +448,16 @@ public sealed class ShotOverlay : Window
 
     void AddToolbar(Rect sel)
     {
-        Button Tool(string glyph, string tip, bool on, Action a)
+        Button Tool(string glyph, string tip, bool on, Action a, string? label = null)
         {
+            // Icon with its name underneath, so tools are easy to find.
+            var icon = Glyph(glyph, 15, Brushes.Black); icon.HorizontalAlignment = HorizontalAlignment.Center;
+            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            content.Children.Add(icon);
+            if (label is not null) content.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 2, 0, 0) });
             var b = new Button
             {
-                Content = Glyph(glyph, 15, Brushes.Black), Width = 32, Height = 30, ToolTip = tip, Cursor = Cursors.Hand,
+                Content = content, MinWidth = 40, Height = label is null ? 30 : 42, Padding = new Thickness(4, 2, 4, 2), ToolTip = tip, Cursor = Cursors.Hand,
                 Background = on ? Theme.B(Theme.CpuC, 0.25) : Brushes.Transparent, BorderThickness = new Thickness(0),
             };
             b.Click += (_, _) => a();
@@ -462,7 +467,7 @@ public sealed class ShotOverlay : Window
         foreach (var (tool, glyph, tip) in new[] { (ShotTool.Rect, "", L("矩形", "Rectangle")), (ShotTool.Arrow, "", L("箭头", "Arrow")), (ShotTool.Pen, "", L("画笔", "Pen")), (ShotTool.Text, "", L("文字", "Text")), (ShotTool.Mosaic, "", L("马赛克", "Mosaic")) })
         {
             var t = tool;
-            row.Children.Add(Tool(glyph, tip, _tool == t, () => { _tool = _tool == t ? null : t; Cursor = _tool is null ? Cursors.SizeAll : Cursors.Cross; Redraw(); }));
+            row.Children.Add(Tool(glyph, tip, _tool == t, () => { _tool = _tool == t ? null : t; Cursor = _tool is null ? Cursors.SizeAll : Cursors.Cross; Redraw(); }, tip));
         }
         row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
         foreach (var c in Screenshot.Colors)
@@ -479,10 +484,10 @@ public sealed class ShotOverlay : Window
             row.Children.Add(Tool(w < 3 ? "" : w < 5 ? "" : "", L($"{w:0} 号粗细", $"Size {w:0}"), Math.Abs(_width - w) < 0.1, () => { _width = wid; Redraw(); }));
         }
         row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
-        row.Children.Add(Tool("", L("撤销 Ctrl+Z", "Undo Ctrl+Z"), false, Undo));
-        row.Children.Add(Tool("", L("贴到屏幕", "Pin to screen"), false, Pin));
-        row.Children.Add(Tool("", L("保存", "Save"), false, Save));
-        row.Children.Add(Tool("", L("取消 Esc", "Cancel Esc"), false, Screenshot.CloseAll));
+        row.Children.Add(Tool("", L("撤销 Ctrl+Z", "Undo Ctrl+Z"), false, Undo, L("撤销", "Undo")));
+        row.Children.Add(Tool("", L("贴到屏幕", "Pin to screen"), false, Pin, L("贴图", "Pin")));
+        row.Children.Add(Tool("", L("保存", "Save"), false, Save, L("保存", "Save")));
+        row.Children.Add(Tool("", L("取消 Esc", "Cancel Esc"), false, Screenshot.CloseAll, L("取消", "Cancel")));
         var copy = new Button { Content = T(L("✓ 复制", "✓ Copy"), 12.5, FontWeights.SemiBold, Brushes.White), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(4, 0, 0, 0), Background = Theme.AccentBrush, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, ToolTip = L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Enter / double-click)") };
         copy.Click += (_, _) => CopyAndClose();
         row.Children.Add(copy);

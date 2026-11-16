@@ -6,7 +6,9 @@ namespace Peekaboo;
 public sealed record ResourceHog(AppGroup Group, bool Cpu, double AvgCpu, int? IdleMinutes, bool Recommended)
 {
     public string Reason => Cpu
-        ? L($"持续占用 CPU，近几分钟平均 {Fmt.Pct(AvgCpu)}", $"Busy for a while, averaging {Fmt.Pct(AvgCpu)} CPU")
+        // Per-app CPU: 100% = one core (Task Manager details scale); also show the share of the whole machine.
+        ? L($"持续占用 CPU，近几分钟平均 {Fmt.Pct(AvgCpu)}（约 {AvgCpu:0.0} 个核心，占整机 {Fmt.Pct(AvgCpu / Math.Max(1, Environment.ProcessorCount))}）",
+            $"Busy for a while, averaging {Fmt.Pct(AvgCpu)} CPU (about {AvgCpu:0.0} cores, {Fmt.Pct(AvgCpu / Math.Max(1, Environment.ProcessorCount))} of the whole machine)")
         : L($"占用 {Fmt.Bytes(Group.Memory)}，{IdleText}没用过", $"Using {Fmt.Bytes(Group.Memory)}, unused for {IdleText}");
 
     string IdleText

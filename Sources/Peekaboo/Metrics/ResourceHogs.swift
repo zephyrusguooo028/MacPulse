@@ -13,7 +13,12 @@ struct ResourceHog: Identifiable, Hashable {
     var reason: String {
         switch kind {
         case .cpu:
-            return L("持续占用 CPU，近几分钟平均 \(Fmt.pct(avgCPU))", "Busy for a while, averaging \(Fmt.pct(avgCPU)) CPU")
+            // Per-app CPU uses the Activity Monitor scale (100% = one core); also show the share of the whole machine.
+            let n = max(ProcessInfo.processInfo.activeProcessorCount, 1)
+            let cores = String(format: "%.1f", avgCPU)
+            let share = Fmt.pct(avgCPU / Double(n))
+            return L("持续占用 CPU，近几分钟平均 \(Fmt.pct(avgCPU))（约 \(cores) 个核心，占整机 \(share)）",
+                     "Busy for a while, averaging \(Fmt.pct(avgCPU)) CPU (about \(cores) cores, \(share) of the whole machine)")
         case .idleMemory:
             let m = idleMinutes ?? 0
             let t = m >= 60 ? L("\(m / 60) 小时", "\(m / 60) h") : L("\(m) 分钟", "\(m) min")

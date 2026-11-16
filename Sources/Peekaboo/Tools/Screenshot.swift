@@ -401,7 +401,7 @@ struct CaptureView: View {
     }
 
     private func toolbarOffset(_ sel: CGRect) -> CGSize {
-        let w: CGFloat = 560, h: CGFloat = 40
+        let w: CGFloat = 720, h: CGFloat = 52
         var x = sel.maxX - w
         x = min(max(x, 8), session.size.width - w - 8)
         var y = sel.maxY + 8
@@ -512,7 +512,7 @@ private struct ShotToolbar: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(ShotTool.allCases) { t in
-                button(t.symbol, t.title, selected: session.tool == t) { session.tool = session.tool == t ? nil : t }
+                button(t.symbol, t.title, label: t.title, selected: session.tool == t) { session.tool = session.tool == t ? nil : t }
             }
             divider
             ForEach(Array(ShotPalette.colors.enumerated()), id: \.offset) { _, c in
@@ -527,10 +527,10 @@ private struct ShotToolbar: View {
             } label: { Image(systemName: "lineweight") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28).help(L("粗细", "Line width"))
             divider
-            button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), selected: false) { ScreenshotController.shared.undo() }
-            button("pin", L("贴到屏幕", "Pin to screen"), selected: false) { ScreenshotController.shared.pin() }
-            button("square.and.arrow.down", L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
-            button("xmark", L("取消 Esc", "Cancel Esc"), selected: false) { ScreenshotController.shared.finish() }
+            button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), label: L("撤销", "Undo"), selected: false) { ScreenshotController.shared.undo() }
+            button("pin", L("贴到屏幕", "Pin to screen"), label: L("贴图", "Pin"), selected: false) { ScreenshotController.shared.pin() }
+            button("square.and.arrow.down", L("保存", "Save"), label: L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
+            button("xmark", L("取消 Esc", "Cancel Esc"), label: L("取消", "Cancel"), selected: false) { ScreenshotController.shared.finish() }
             Button { ScreenshotController.shared.copyAndClose() } label: {
                 Label(L("复制", "Copy"), systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
             }
@@ -546,12 +546,17 @@ private struct ShotToolbar: View {
 
     private var divider: some View { Divider().frame(height: 20).padding(.horizontal, 4) }
 
-    private func button(_ symbol: String, _ help: String, selected: Bool, _ action: @escaping () -> Void) -> some View {
+    private func button(_ symbol: String, _ help: String, label: String, selected: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 13, weight: .medium))
-                .frame(width: 28, height: 26)
-                .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
-                .contentShape(RoundedRectangle(cornerRadius: 6))   // whole tile is clickable, not just the glyph
+            // Icon with its name underneath, so tools are easy to find.
+            VStack(spacing: 2) {
+                Image(systemName: symbol).font(.system(size: 14, weight: .medium)).frame(height: 18)
+                Text(label).font(.system(size: 10, weight: .medium)).lineLimit(1)
+            }
+            .frame(minWidth: 40)
+            .padding(.horizontal, 3).padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
+            .contentShape(RoundedRectangle(cornerRadius: 6))   // whole tile is clickable, not just the glyph
         }
         .buttonStyle(.plain).help(help)
     }

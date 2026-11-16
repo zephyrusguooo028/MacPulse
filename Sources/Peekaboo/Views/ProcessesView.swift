@@ -63,7 +63,8 @@ struct ProcessesView: View {
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(nsColor: .controlBackgroundColor)))
             .frame(maxHeight: .infinity)
 
-            Text(L("只显示当前用户能读取的进程。CPU 100% = 占满一个核心。退出会像 ⌘Q 一样让应用自己保存后关闭。", "Only processes readable by the current user are shown. CPU 100% = one full core. Quit works like ⌘Q, letting the app save before closing."))
+            Text(L("只显示当前用户能读取的进程。CPU 100% = 占满一个核心；这台 Mac 有 \(ProcessInfo.processInfo.activeProcessorCount) 个核心，全部占满是 \(ProcessInfo.processInfo.activeProcessorCount * 100)%，顶部的整体 CPU 是按整机算的。退出会像 ⌘Q 一样让应用自己保存后关闭。",
+                   "Only processes readable by the current user are shown. CPU 100% = one full core; this Mac has \(ProcessInfo.processInfo.activeProcessorCount) cores, so all of them busy is \(ProcessInfo.processInfo.activeProcessorCount * 100)%. The overall CPU at the top is for the whole machine. Quit works like ⌘Q, letting the app save before closing."))
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(24)

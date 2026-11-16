@@ -145,11 +145,12 @@ struct StatLine: View {
     var body: some View {
         HStack {
             if let color { Circle().fill(color).frame(width: 7, height: 7) }
-            Text(label).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).monospacedDigit()
+            Text(label).foregroundStyle(.secondary).lineLimit(1)
+            Spacer(minLength: 4)
+            Text(value).monospacedDigit().lineLimit(1)
         }
         .font(.callout)
+        .minimumScaleFactor(0.75)   // English labels are longer; shrink a little rather than wrap
     }
 }
 
@@ -231,7 +232,7 @@ enum FileActions {
         a.alertStyle = destructive ? .warning : .informational
         let b = a.addButton(withTitle: ok)
         if destructive { b.hasDestructiveAction = true }
-        a.addButton(withTitle: "取消")
+        a.addButton(withTitle: L("取消", "Cancel"))
         return a.runModal() == .alertFirstButtonReturn
     }
 
@@ -239,19 +240,19 @@ enum FileActions {
     @MainActor
     static func trash(_ url: URL, size: Int64) -> Bool {
         guard CleanupModel.isSafeTarget(url) else {
-            _ = confirm("不能删除这个位置", "\(url.tildePath) 是受保护的系统或个人目录。", ok: "好", destructive: false)
+            _ = confirm(L("不能删除这个位置", "This location can't be deleted"), L("\(url.tildePath) 是受保护的系统或个人目录。", "\(url.tildePath) is a protected system or personal folder."), ok: L("好", "OK"), destructive: false)
             return false
         }
         if AppSettings.shared.isWhitelisted(url) {
-            _ = confirm("这个位置在白名单里", "\(url.tildePath) 已被加入白名单，Peekaboo 不会删除它。", ok: "好", destructive: false)
+            _ = confirm(L("这个位置在白名单里", "This location is whitelisted"), L("\(url.tildePath) 已被加入白名单，Peekaboo 不会删除它。", "\(url.tildePath) is on the whitelist, so Peekaboo won't delete it."), ok: L("好", "OK"), destructive: false)
             return false
         }
-        guard confirm("移到废纸篓？", "\(url.tildePath)\n\(Fmt.bytes(size))\n\n可以在废纸篓里恢复。", ok: "移到废纸篓") else { return false }
+        guard confirm(L("移到废纸篓？", "Move to Trash?"), L("\(url.tildePath)\n\(Fmt.bytes(size))\n\n可以在废纸篓里恢复。", "\(url.tildePath)\n\(Fmt.bytes(size))\n\nYou can restore it from the Trash."), ok: L("移到废纸篓", "Move to Trash")) else { return false }
         do {
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
             return true
         } catch {
-            _ = confirm("没能移到废纸篓", error.localizedDescription, ok: "好", destructive: false)
+            _ = confirm(L("没能移到废纸篓", "Couldn't move to Trash"), error.localizedDescription, ok: L("好", "OK"), destructive: false)
             return false
         }
     }
@@ -260,14 +261,14 @@ enum FileActions {
 extension View {
     func fileContextMenu(_ url: URL, size: Int64, onTrash: @escaping () -> Void) -> some View {
         contextMenu {
-            Button("在 Finder 中显示") { FileActions.reveal(url) }
-            Button("拷贝路径") {
+            Button(L("在 Finder 中显示", "Show in Finder")) { FileActions.reveal(url) }
+            Button(L("拷贝路径", "Copy path")) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(url.path, forType: .string)
             }
-            Button("加入白名单（永不清理）") { AppSettings.shared.whitelist.append(url.tildePath) }
+            Button(L("加入白名单（永不清理）", "Add to whitelist (never clean)")) { AppSettings.shared.whitelist.append(url.tildePath) }
             Divider()
-            Button("移到废纸篓…", role: .destructive) {
+            Button(L("移到废纸篓…", "Move to Trash…"), role: .destructive) {
                 if FileActions.trash(url, size: size) { onTrash() }
             }
         }

@@ -9,16 +9,16 @@ struct MainView: View {
             List(selection: Binding(get: { app.tab }, set: { if let t = $0 { app.tab = t } })) {
                 Section { SidebarBrand() }
                     .listRowSeparator(.hidden)
-                Section("监控") {
+                Section(L("监控", "Monitor")) {
                     SidebarRow(tab: .overview)
                     SidebarRow(tab: .processes)
                 }
-                Section("空间") {
+                Section(L("空间", "Storage")) {
                     SidebarRow(tab: .disk)
                     SidebarRow(tab: .projects)
                     SidebarRow(tab: .cleanup)
                 }
-                Section("工具") {
+                Section(L("工具", "Tools")) {
                     SidebarRow(tab: .screenshot)
                     SidebarRow(tab: .typing)
                 }
@@ -120,7 +120,8 @@ private struct SidebarRow: View {
         case .processes: return (Fmt.pct(m.memory.usedFraction), m.memory.pressureLevel >= 4)
         case .disk:
             let low = m.disk.total > 0 && Double(m.disk.available) < Double(app.settings.alertDiskGB) * 1_073_741_824
-            return ("剩 " + MenuBarRenderer.diskText(m.disk.available), low)
+            let free = MenuBarRenderer.diskText(m.disk.available)
+            return (L("剩 " + free, free + " free"), low)
         case .projects: return app.projects.projects.isEmpty ? nil : ("\(app.projects.projects.count)", false)
         case .cleanup:
             let r = app.cleanup.recommendedSize
@@ -139,9 +140,9 @@ private struct SidebarFooter: View {
         let d = app.monitor.disk
         let mem = app.monitor.memory
         VStack(alignment: .leading, spacing: 8) {
-            meter("internaldrive", "磁盘", d.usedFraction, "\(MenuBarRenderer.diskText(d.available)) 可用",
+            meter("internaldrive", L("磁盘", "Disk"), d.usedFraction, L("\(MenuBarRenderer.diskText(d.available)) 可用", "\(MenuBarRenderer.diskText(d.available)) free"),
                   d.usedFraction > 0.9 ? Palette.danger : Palette.disk)
-            meter("memorychip", "内存", mem.usedFraction, Fmt.pct(mem.usedFraction),
+            meter("memorychip", L("内存", "Memory"), mem.usedFraction, Fmt.pct(mem.usedFraction),
                   mem.pressureLevel >= 4 ? Palette.danger : Palette.mem)
         }
         .padding(10)

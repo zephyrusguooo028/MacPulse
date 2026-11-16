@@ -119,7 +119,7 @@ final class DiskScanEngine: @unchecked Sendable {
             }
         }
         if smallCount > 0 {
-            keep.append(DiskNode(url: node.url, name: "其他 \(smallCount) 个小项目", isDirectory: false, size: smallSize, isAggregate: true, fileCount: smallCount))
+            keep.append(DiskNode(url: node.url, name: L("其他 \(smallCount) 个小项目", "\(smallCount) other small items"), isDirectory: false, size: smallSize, isAggregate: true, fileCount: smallCount))
         }
         keep.sort { $0.size > $1.size }
         for k in keep { k.parent = node }

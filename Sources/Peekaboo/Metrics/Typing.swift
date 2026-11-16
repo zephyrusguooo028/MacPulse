@@ -199,22 +199,25 @@ private let typingTapCallback: CGEventTapCallBack = { _, type, event, _ in
 
 /// ANSI keyboard layout with macOS key codes, for the heatmap.
 enum KeyboardLayout {
-    struct Key { let code: Int; let label: String; let width: Double }
+    struct Key {
+        let code: Int; let raw: String; let width: Double
+        var label: String { code == 49 ? L("空格", "Space") : raw }
+    }
 
     static let rows: [[Key]] = [
         [k(50, "`"), k(18, "1"), k(19, "2"), k(20, "3"), k(21, "4"), k(23, "5"), k(22, "6"), k(26, "7"), k(28, "8"), k(25, "9"), k(29, "0"), k(27, "-"), k(24, "="), k(51, "⌫", 1.5)],
         [k(48, "⇥", 1.5), k(12, "Q"), k(13, "W"), k(14, "E"), k(15, "R"), k(17, "T"), k(16, "Y"), k(32, "U"), k(34, "I"), k(31, "O"), k(35, "P"), k(33, "["), k(30, "]"), k(42, "\\")],
         [k(57, "⇪", 1.75), k(0, "A"), k(1, "S"), k(2, "D"), k(3, "F"), k(5, "G"), k(4, "H"), k(38, "J"), k(40, "K"), k(37, "L"), k(41, ";"), k(39, "'"), k(36, "↩", 1.75)],
         [k(56, "⇧", 2.25), k(6, "Z"), k(7, "X"), k(8, "C"), k(9, "V"), k(11, "B"), k(45, "N"), k(46, "M"), k(43, ","), k(47, "."), k(44, "/"), k(60, "⇧", 2.25)],
-        [k(63, "fn"), k(59, "⌃"), k(58, "⌥"), k(55, "⌘", 1.25), k(49, "空格", 5), k(54, "⌘", 1.25), k(61, "⌥"), k(123, "←"), k(125, "↓"), k(126, "↑"), k(124, "→")],
+        [k(63, "fn"), k(59, "⌃"), k(58, "⌥"), k(55, "⌘", 1.25), k(49, "Space", 5), k(54, "⌘", 1.25), k(61, "⌥"), k(123, "←"), k(125, "↓"), k(126, "↑"), k(124, "→")],
     ]
 
-    private static func k(_ c: Int, _ l: String, _ w: Double = 1) -> Key { Key(code: c, label: l, width: w) }
+    private static func k(_ c: Int, _ l: String, _ w: Double = 1) -> Key { Key(code: c, raw: l, width: w) }
 
-    static let labels: [Int: String] = {
+    static var labels: [Int: String] {
         var m: [Int: String] = [:]
         for row in rows { for key in row { m[key.code] = key.label } }
         m[53] = "esc"; m[117] = "⌦"; m[76] = "⌤"
         return m
-    }()
+    }
 }

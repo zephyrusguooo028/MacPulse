@@ -16,15 +16,15 @@ public sealed class OverviewPage : PageView
     {
         var m = SystemMonitor.Shared;
         var tiles = new UniformGrid4();
-        tiles.Add(Tile("CPU", "", H(14, Ring(m.Cpu.Total, Theme.Load(m.Cpu.Total), Fmt.Pct(m.Cpu.Total), 52, 5),
+        tiles.Add(Tile("CPU", "", RingAnd(Ring(m.Cpu.Total, Theme.Load(m.Cpu.Total), Fmt.Pct(m.Cpu.Total), 52, 5),
             Lines((L("用户", "User"), Fmt.Pct(m.Cpu.User, 1)), (L("系统", "System"), Fmt.Pct(m.Cpu.System, 1)), (L("核心", "Cores"), L($"{m.Cpu.PerCore.Length} 个", $"{m.Cpu.PerCore.Length}"))))));
         var memC = m.Memory.PressureLevel >= 4 ? Theme.DangerC : m.Memory.PressureLevel >= 2 ? Theme.WarnC : Theme.MemC;
-        tiles.Add(Tile(L("内存", "Memory"), "", H(14, Ring(m.Memory.UsedFraction, memC, Fmt.Pct(m.Memory.UsedFraction), 52, 5),
-            Lines((L("已用", "Used"), Fmt.Bytes(m.Memory.Used)), (L("压力", "Pressure"), m.Memory.PressureText), (L("提交", "Committed"), Fmt.Bytes(m.Memory.CommitUsed))))));
+        tiles.Add(Tile(L("内存", "Memory"), "", RingAnd(Ring(m.Memory.UsedFraction, memC, Fmt.Pct(m.Memory.UsedFraction), 52, 5),
+            Lines((L("已用", "Used"), Fmt.Bytes(m.Memory.Used)), (L("压力", "Pressure"), m.Memory.PressureText), (L("提交", "Commit"), Fmt.Bytes(m.Memory.CommitUsed))))));
         var diskLink = T(L("分析磁盘 →", "Analyze disk →"), 12.5, color: Theme.AccentBrush); diskLink.Cursor = System.Windows.Input.Cursors.Hand;
         diskLink.MouseLeftButtonUp += (_, _) => MainWindow.Instance?.Navigate(Page.Disk);
-        tiles.Add(Tile(L("磁盘 ", "Disk ") + m.Disk.Name, "", H(14, Ring(m.Disk.UsedFraction, m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC, Fmt.Pct(m.Disk.UsedFraction), 52, 5, caption: L("已用", "Used")),
-            V(6, Lines((L("可用", "Available"), Fmt.Bytes(m.Disk.Free)), (L("已用", "Used"), Fmt.Bytes(m.Disk.Used))), diskLink))));
+        tiles.Add(Tile(L("磁盘 ", "Disk ") + m.Disk.Name, "", RingAnd(Ring(m.Disk.UsedFraction, m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC, Fmt.Pct(m.Disk.UsedFraction), 52, 5, caption: L("已用", "Used")),
+            V(6, Lines((L("可用", "Free"), Fmt.Bytes(m.Disk.Free)), (L("已用", "Used"), Fmt.Bytes(m.Disk.Used))), diskLink))));
         var recent = m.Samples.TakeLast(60).ToList();
         double netMax = Math.Max(1, recent.Select(s => Math.Max(s.NetIn, s.NetOut)).DefaultIfEmpty(1).Max());
         var netChart = new Grid { Height = 44 };

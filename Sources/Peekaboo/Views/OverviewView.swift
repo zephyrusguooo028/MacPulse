@@ -3,14 +3,23 @@ import Charts
 
 struct OverviewView: View {
     @Environment(AppState.self) private var app
-    @Local private var historyMetric = "CPU"
+    @Local private var historyMetric = "cpu"
+
+    private static func metricName(_ key: String) -> String {
+        switch key {
+        case "mem": return L("内存", "Memory")
+        case "net": return L("网络", "Network")
+        case "temp": return L("温度", "Temp")
+        default: return "CPU"
+        }
+    }
 
     var body: some View {
         let m = app.monitor
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "概览",
-                           subtitle: "\(SystemInfo.chip) · \(Fmt.bytes(m.memory.total)) 内存 · \(SystemInfo.osVersion) · 已运行 \(SystemInfo.uptimeText())") {
+                PageHeader(title: L("概览", "Overview"),
+                           subtitle: L("\(SystemInfo.chip) · \(Fmt.bytes(m.memory.total)) 内存 · \(SystemInfo.osVersion) · 已运行 \(SystemInfo.uptimeText())", "\(SystemInfo.chip) · \(Fmt.bytes(m.memory.total)) memory · \(SystemInfo.osVersion) · up \(SystemInfo.uptimeText())")) {
                     EmptyView()
                 }
 
@@ -22,14 +31,14 @@ struct OverviewView: View {
                 }
 
                 HStack(alignment: .top, spacing: 14) {
-                    Card("实时走势", symbol: "waveform.path.ecg", trailing: {
-                        Text("最近 5 分钟").font(.caption).foregroundStyle(.secondary)
+                    Card(L("实时走势", "Live activity"), symbol: "waveform.path.ecg", trailing: {
+                        Text(L("最近 5 分钟", "Last 5 minutes")).font(.caption).foregroundStyle(.secondary)
                     }) {
                         liveChart(m).frame(height: 190)
                     }
                     .frame(maxWidth: .infinity)
 
-                    Card("CPU 核心", symbol: "cpu", trailing: {
+                    Card(L("CPU 核心", "CPU cores"), symbol: "cpu", trailing: {
                         Text(m.coreSummary).font(.caption).foregroundStyle(.secondary)
                     }) {
                         coreBars(m).frame(height: 190)
@@ -37,9 +46,9 @@ struct OverviewView: View {
                     .frame(width: 330)
                 }
 
-                Card("过去 24 小时", symbol: "clock.arrow.circlepath", trailing: {
+                Card(L("过去 24 小时", "Past 24 hours"), symbol: "clock.arrow.circlepath", trailing: {
                     Picker("", selection: $historyMetric) {
-                        ForEach(["CPU", "内存", "网络", "温度"], id: \.self) { Text($0) }
+                        ForEach(["cpu", "mem", "net", "temp"], id: \.self) { Text(Self.metricName($0)).tag($0) }
                     }
                     .pickerStyle(.segmented).labelsHidden().frame(width: 260)
                 }) {
@@ -66,9 +75,9 @@ struct OverviewView: View {
             HStack(spacing: 14) {
                 Ring(value: m.cpu.total, color: Palette.load(m.cpu.total), label: Fmt.pct(m.cpu.total)).frame(width: 72, height: 72)
                 VStack(spacing: 6) {
-                    StatLine(label: "用户", value: Fmt.pct(m.cpu.user, digits: 1), color: Palette.cpu)
-                    StatLine(label: "系统", value: Fmt.pct(m.cpu.system, digits: 1), color: Palette.warn)
-                    StatLine(label: "负载", value: SystemInfo.loadAverage.first.map { String(format: "%.2f", $0) } ?? "—")
+                    StatLine(label: L("用户", "User"), value: Fmt.pct(m.cpu.user, digits: 1), color: Palette.cpu)
+                    StatLine(label: L("系统", "System"), value: Fmt.pct(m.cpu.system, digits: 1), color: Palette.warn)
+                    StatLine(label: L("负载", "Load"), value: SystemInfo.loadAverage.first.map { String(format: "%.2f", $0) } ?? "—")
                 }
             }
         }
@@ -76,27 +85,27 @@ struct OverviewView: View {
 
     private func memTile(_ m: SystemMonitor) -> some View {
         let color: Color = m.memory.pressureLevel >= 4 ? Palette.danger : (m.memory.pressureLevel >= 2 ? Palette.warn : Palette.mem)
-        return tile("内存", "memorychip") {
+        return tile(L("内存", "Memory"), "memorychip") {
             HStack(spacing: 14) {
                 Ring(value: m.memory.usedFraction, color: color, label: Fmt.pct(m.memory.usedFraction)).frame(width: 72, height: 72)
                 VStack(spacing: 6) {
-                    StatLine(label: "已用", value: Fmt.bytes(m.memory.used))
-                    StatLine(label: "压力", value: m.memory.pressureText, color: color)
-                    StatLine(label: "交换", value: Fmt.bytes(m.memory.swapUsed))
+                    StatLine(label: L("已用", "Used"), value: Fmt.bytes(m.memory.used))
+                    StatLine(label: L("压力", "Pressure"), value: m.memory.pressureText, color: color)
+                    StatLine(label: L("交换", "Swap"), value: Fmt.bytes(m.memory.swapUsed))
                 }
             }
         }
     }
 
     private func diskTile(_ m: SystemMonitor) -> some View {
-        tile("磁盘", "internaldrive") {
+        tile(L("磁盘", "Disk"), "internaldrive") {
             HStack(spacing: 14) {
                 Ring(value: m.disk.usedFraction, color: m.disk.usedFraction > 0.9 ? Palette.danger : Palette.disk,
-                     label: Fmt.pct(m.disk.usedFraction), caption: "已用").frame(width: 72, height: 72)
+                     label: Fmt.pct(m.disk.usedFraction), caption: L("已用", "used")).frame(width: 72, height: 72)
                 VStack(spacing: 6) {
-                    StatLine(label: "可用", value: Fmt.bytes(m.disk.available), color: Palette.disk)
-                    StatLine(label: "已用", value: Fmt.bytes(m.disk.used))
-                    Button("分析磁盘 →") { app.tab = .disk }.buttonStyle(.link).font(.callout)
+                    StatLine(label: L("可用", "Free"), value: Fmt.bytes(m.disk.available), color: Palette.disk)
+                    StatLine(label: L("已用", "Used"), value: Fmt.bytes(m.disk.used))
+                    Button(L("分析磁盘 →", "Analyze disk →")) { app.tab = .disk }.buttonStyle(.link).font(.callout)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
@@ -104,7 +113,7 @@ struct OverviewView: View {
     }
 
     private func netTile(_ m: SystemMonitor) -> some View {
-        tile("网络", "network") {
+        tile(L("网络", "Network"), "network") {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Label(Fmt.rate(m.netIn), systemImage: "arrow.down").foregroundStyle(Palette.netIn)
@@ -127,11 +136,11 @@ struct OverviewView: View {
     private func liveChart(_ m: SystemMonitor) -> some View {
         Chart {
             ForEach(m.samples) { s in
-                AreaMark(x: .value("时间", s.t), y: .value("CPU", s.cpu * 100), series: .value("指标", "CPU"))
+                AreaMark(x: .value(L("时间", "Time"), s.t), y: .value("CPU", s.cpu * 100), series: .value(L("指标", "Metric"), "CPU"))
                     .foregroundStyle(Palette.cpu.opacity(0.18))
-                LineMark(x: .value("时间", s.t), y: .value("CPU", s.cpu * 100), series: .value("指标", "CPU"))
+                LineMark(x: .value(L("时间", "Time"), s.t), y: .value("CPU", s.cpu * 100), series: .value(L("指标", "Metric"), "CPU"))
                     .foregroundStyle(Palette.cpu)
-                LineMark(x: .value("时间", s.t), y: .value("内存", s.mem * 100), series: .value("指标", "内存"))
+                LineMark(x: .value(L("时间", "Time"), s.t), y: .value(L("内存", "Memory"), s.mem * 100), series: .value(L("指标", "Metric"), L("内存", "Memory")))
                     .foregroundStyle(Palette.mem)
             }
         }
@@ -140,7 +149,7 @@ struct OverviewView: View {
         .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) { v in AxisGridLine(); AxisValueLabel { if let d = v.as(Date.self) { Text(Fmt.clock(d)) } } } }
         .chartLegend(.hidden)
         .overlay(alignment: .topTrailing) {
-            FlowLegend(items: [(Palette.cpu, "CPU", Fmt.pct(m.cpu.total)), (Palette.mem, "内存", Fmt.pct(m.memory.usedFraction))])
+            FlowLegend(items: [(Palette.cpu, "CPU", Fmt.pct(m.cpu.total)), (Palette.mem, L("内存", "Memory"), Fmt.pct(m.memory.usedFraction))])
                 .padding(6).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
         }
     }
@@ -177,25 +186,25 @@ struct OverviewView: View {
     private func historyChart(_ m: SystemMonitor) -> some View {
         let pts = m.history
         if pts.count < 2 {
-            EmptyHint(symbol: "clock", title: "正在记录", detail: "Peekaboo 每分钟记一个点，保留 24 小时。运行一会儿就能看到曲线。")
+            EmptyHint(symbol: "clock", title: L("正在记录", "Recording"), detail: L("Peekaboo 每分钟记一个点，保留 24 小时。运行一会儿就能看到曲线。", "Peekaboo records one point per minute and keeps 24 hours. Leave it running for a while to see the chart."))
         } else {
             Chart {
                 ForEach(pts) { p in
                     switch historyMetric {
-                    case "内存":
-                        AreaMark(x: .value("时间", p.t), y: .value("内存", p.mem * 100)).foregroundStyle(Palette.mem.opacity(0.25))
-                        LineMark(x: .value("时间", p.t), y: .value("内存", p.mem * 100)).foregroundStyle(Palette.mem)
-                    case "网络":
-                        LineMark(x: .value("时间", p.t), y: .value("速率", p.netIn / 1024), series: .value("方向", "下载")).foregroundStyle(Palette.netIn)
-                        LineMark(x: .value("时间", p.t), y: .value("速率", p.netOut / 1024), series: .value("方向", "上传")).foregroundStyle(Palette.netOut)
-                    case "温度":
+                    case "mem":
+                        AreaMark(x: .value(L("时间", "Time"), p.t), y: .value(L("内存", "Memory"), p.mem * 100)).foregroundStyle(Palette.mem.opacity(0.25))
+                        LineMark(x: .value(L("时间", "Time"), p.t), y: .value(L("内存", "Memory"), p.mem * 100)).foregroundStyle(Palette.mem)
+                    case "net":
+                        LineMark(x: .value(L("时间", "Time"), p.t), y: .value(L("速率", "Rate"), p.netIn / 1024), series: .value(L("方向", "Direction"), L("下载", "Download"))).foregroundStyle(Palette.netIn)
+                        LineMark(x: .value(L("时间", "Time"), p.t), y: .value(L("速率", "Rate"), p.netOut / 1024), series: .value(L("方向", "Direction"), L("上传", "Upload"))).foregroundStyle(Palette.netOut)
+                    case "temp":
                         if let t = p.temp {
-                            LineMark(x: .value("时间", p.t), y: .value("温度", t)).foregroundStyle(Palette.danger)
+                            LineMark(x: .value(L("时间", "Time"), p.t), y: .value(L("温度", "Temperature"), t)).foregroundStyle(Palette.danger)
                         }
                     default:
-                        AreaMark(x: .value("时间", p.t), yStart: .value("平均", p.cpu * 100), yEnd: .value("峰值", p.cpuMax * 100))
+                        AreaMark(x: .value(L("时间", "Time"), p.t), yStart: .value(L("平均", "Average"), p.cpu * 100), yEnd: .value(L("峰值", "Peak"), p.cpuMax * 100))
                             .foregroundStyle(Palette.cpu.opacity(0.18))
-                        LineMark(x: .value("时间", p.t), y: .value("CPU", p.cpu * 100)).foregroundStyle(Palette.cpu)
+                        LineMark(x: .value(L("时间", "Time"), p.t), y: .value("CPU", p.cpu * 100)).foregroundStyle(Palette.cpu)
                     }
                 }
             }
@@ -206,8 +215,8 @@ struct OverviewView: View {
                     AxisValueLabel {
                         let d = v.as(Double.self) ?? 0
                         switch historyMetric {
-                        case "网络": Text(Fmt.rate(d * 1024))
-                        case "温度": Text(String(format: "%.0f°", d))
+                        case "net": Text(Fmt.rate(d * 1024))
+                        case "temp": Text(String(format: "%.0f°", d))
                         default: Text(String(format: "%.0f%%", d))
                         }
                     }
@@ -222,31 +231,31 @@ struct OverviewView: View {
     private func memoryBreakdown(_ m: SystemMonitor) -> some View {
         let mem = m.memory
         let free = mem.total > mem.used + mem.cached ? mem.total - mem.used - mem.cached : 0
-        return Card("内存构成", symbol: "square.stack.3d.up") {
+        return Card(L("内存构成", "Memory breakdown"), symbol: "square.stack.3d.up") {
             StackedBar(segments: [
-                Segment(label: "应用", value: Double(mem.app), color: Palette.mem),
-                Segment(label: "联动", value: Double(mem.wired), color: Palette.warn),
-                Segment(label: "压缩", value: Double(mem.compressed), color: Palette.danger),
-                Segment(label: "缓存文件", value: Double(mem.cached), color: Palette.netIn.opacity(0.6)),
-                Segment(label: "空闲", value: Double(free), color: Color.primary.opacity(0.12)),
+                Segment(label: L("应用", "App"), value: Double(mem.app), color: Palette.mem),
+                Segment(label: L("联动", "Wired"), value: Double(mem.wired), color: Palette.warn),
+                Segment(label: L("压缩", "Compressed"), value: Double(mem.compressed), color: Palette.danger),
+                Segment(label: L("缓存文件", "Cached files"), value: Double(mem.cached), color: Palette.netIn.opacity(0.6)),
+                Segment(label: L("空闲", "Free"), value: Double(free), color: Color.primary.opacity(0.12)),
             ], total: Double(mem.total), height: 16)
-            Text("“缓存文件”是系统为加快速度留着的文件缓存，需要时会自动让出，不算真正占用。")
+            Text(L("“缓存文件”是系统为加快速度留着的文件缓存，需要时会自动让出，不算真正占用。", "“Cached files” is file cache the system keeps to speed things up. It's released automatically when needed and isn't really in use."))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private func deviceCard(_ m: SystemMonitor) -> some View {
-        Card("设备", symbol: "desktopcomputer") {
+        Card(L("设备", "Device"), symbol: "desktopcomputer") {
             VStack(spacing: 8) {
                 StatLine(label: "GPU", value: m.gpu.map { Fmt.pct($0) } ?? "—")
-                StatLine(label: "CPU 温度", value: m.temperature.map { String(format: "%.0f °C（估算）", $0) } ?? (app.settings.showTemperature ? "读不到" : "已关闭"))
+                StatLine(label: L("CPU 温度", "CPU temperature"), value: m.temperature.map { String(format: L("%.0f °C（估算）", "%.0f °C (estimated)"), $0) } ?? (app.settings.showTemperature ? L("读不到", "Unavailable") : L("已关闭", "Off")))
                 if let b = m.battery {
-                    StatLine(label: "电池", value: "\(Fmt.pct(b.percent)) · \(b.charging ? "充电中" : (b.onAC ? "已接电源" : (b.minutesLeft.map { "剩约 \($0 / 60) 小时 \($0 % 60) 分" } ?? "使用电池")))")
+                    StatLine(label: L("电池", "Battery"), value: "\(Fmt.pct(b.percent)) · \(b.charging ? L("充电中", "Charging") : (b.onAC ? L("已接电源", "On power adapter") : (b.minutesLeft.map { L("剩约 \($0 / 60) 小时 \($0 % 60) 分", "About \($0 / 60)h \($0 % 60)m left") } ?? L("使用电池", "On battery"))))")
                 } else {
-                    StatLine(label: "电源", value: "外接电源")
+                    StatLine(label: L("电源", "Power"), value: L("外接电源", "Power adapter"))
                 }
-                StatLine(label: "负载 1/5/15 分", value: SystemInfo.loadAverage.map { String(format: "%.2f", $0) }.joined(separator: " / "))
-                StatLine(label: "型号", value: SystemInfo.model)
+                StatLine(label: L("负载 1/5/15 分", "Load 1/5/15 min"), value: SystemInfo.loadAverage.map { String(format: "%.2f", $0) }.joined(separator: " / "))
+                StatLine(label: L("型号", "Model"), value: SystemInfo.model)
             }
         }
     }

@@ -60,7 +60,7 @@ struct HotkeySpec: Codable, Equatable {
         if modifiers & UInt32(optionKey) != 0 { s += "⌥" }
         if modifiers & UInt32(shiftKey) != 0 { s += "⇧" }
         if modifiers & UInt32(cmdKey) != 0 { s += "⌘" }
-        return s + label
+        return s + (keyCode == UInt32(kVK_Space) ? L("空格", "Space") : label)
     }
 
     static let functionKeys: [UInt16: String] = [
@@ -68,7 +68,7 @@ struct HotkeySpec: Codable, Equatable {
         UInt16(kVK_F7): "F7", UInt16(kVK_F8): "F8", UInt16(kVK_F9): "F9", UInt16(kVK_F10): "F10", UInt16(kVK_F11): "F11", UInt16(kVK_F12): "F12",
     ]
     static let namedKeys: [UInt16: String] = [
-        UInt16(kVK_Space): "空格", UInt16(kVK_Return): "↩", UInt16(kVK_Tab): "⇥", UInt16(kVK_LeftArrow): "←", UInt16(kVK_RightArrow): "→",
+        UInt16(kVK_Space): "Space", UInt16(kVK_Return): "↩", UInt16(kVK_Tab): "⇥", UInt16(kVK_LeftArrow): "←", UInt16(kVK_RightArrow): "→",
         UInt16(kVK_UpArrow): "↑", UInt16(kVK_DownArrow): "↓", UInt16(kVK_Delete): "⌫",
     ]
 

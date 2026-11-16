@@ -36,14 +36,14 @@ enum ThemeColor: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .system: return "跟随系统"
-        case .mono: return "黑白"
-        case .load: return "跟随负载"
-        case .pink: return "樱花粉"
-        case .mint: return "薄荷绿"
-        case .purple: return "葡萄紫"
-        case .orange: return "橘子橙"
-        case .blue: return "天空蓝"
+        case .system: return L("跟随系统", "System")
+        case .mono: return L("黑白", "Mono")
+        case .load: return L("跟随负载", "By load")
+        case .pink: return L("樱花粉", "Pink")
+        case .mint: return L("薄荷绿", "Mint")
+        case .purple: return L("葡萄紫", "Purple")
+        case .orange: return L("橘子橙", "Orange")
+        case .blue: return L("天空蓝", "Blue")
         }
     }
 }

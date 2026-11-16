@@ -59,14 +59,14 @@ struct DiskView: View {
         let d = app.monitor.disk
         let scan = app.disk
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(title: "磁盘", subtitle: "共 \(Fmt.bytes(d.total))，可用 \(Fmt.bytes(d.available))") {
+            PageHeader(title: L("磁盘", "Disk"), subtitle: L("共 \(Fmt.bytes(d.total))，可用 \(Fmt.bytes(d.available))", "\(Fmt.bytes(d.available)) free of \(Fmt.bytes(d.total))")) {
                 HStack {
                     if scan.scanning {
-                        Button("停止") { scan.cancel() }
+                        Button(L("停止", "Stop")) { scan.cancel() }
                     } else {
-                        Button { chooseFolder() } label: { Label("选择文件夹…", systemImage: "folder") }
+                        Button { chooseFolder() } label: { Label(L("选择文件夹…", "Choose folder…"), systemImage: "folder") }
                         Button { scan.scan(Paths.home) } label: {
-                            Label(scan.root == nil ? "扫描用户目录" : "重新扫描", systemImage: "arrow.clockwise")
+                            Label(scan.root == nil ? L("扫描用户目录", "Scan home folder") : L("重新扫描", "Rescan"), systemImage: "arrow.clockwise")
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -75,21 +75,21 @@ struct DiskView: View {
 
             Card("Macintosh HD", symbol: "internaldrive") {
                 StackedBar(segments: [
-                    Segment(label: "已用", value: Double(d.used), color: Palette.cpu),
-                    Segment(label: "可清除（系统按需释放）", value: Double(d.purgeable), color: Palette.cpu.opacity(0.35)),
-                    Segment(label: "空闲", value: Double(d.free), color: Palette.disk.opacity(0.5)),
+                    Segment(label: L("已用", "Used"), value: Double(d.used), color: Palette.cpu),
+                    Segment(label: L("可清除（系统按需释放）", "Purgeable (freed by the system as needed)"), value: Double(d.purgeable), color: Palette.cpu.opacity(0.35)),
+                    Segment(label: L("空闲", "Free"), value: Double(d.free), color: Palette.disk.opacity(0.5)),
                 ], total: Double(d.total), height: 16)
                 if let r = scan.root, r.url == Paths.home {
-                    Text("其中你的用户目录占 \(Fmt.bytes(r.size))，其余约 \(Fmt.bytes(max(d.used - r.size, 0))) 是 macOS 系统、/Applications 里的应用和受保护的数据（需要「完全磁盘访问」才能统计）。")
+                    Text(L("其中你的用户目录占 \(Fmt.bytes(r.size))，其余约 \(Fmt.bytes(max(d.used - r.size, 0))) 是 macOS 系统、/Applications 里的应用和受保护的数据（需要「完全磁盘访问」才能统计）。", "Your home folder uses \(Fmt.bytes(r.size)). The remaining ~\(Fmt.bytes(max(d.used - r.size, 0))) is macOS, apps in /Applications and protected data (counting it requires Full Disk Access)."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
 
             if scan.scanning {
-                Card("正在扫描 \(scan.scanRoot.tildePath)", symbol: "magnifyingglass") {
+                Card(L("正在扫描 \(scan.scanRoot.tildePath)", "Scanning \(scan.scanRoot.tildePath)"), symbol: "magnifyingglass") {
                     HStack(spacing: 12) {
                         ProgressView().controlSize(.small)
-                        Text("已统计 \(scan.scannedFiles) 个文件，\(Fmt.bytes(scan.scannedBytes))").monospacedDigit()
+                        Text(L("已统计 \(scan.scannedFiles) 个文件，\(Fmt.bytes(scan.scannedBytes))", "\(scan.scannedFiles) files counted, \(Fmt.bytes(scan.scannedBytes))")).monospacedDigit()
                         Spacer()
                     }
                 }
@@ -110,12 +110,12 @@ struct DiskView: View {
                 }
                 .frame(maxHeight: .infinity)
             } else if !scan.scanning {
-                Card("看看空间都去哪了", symbol: "square.grid.3x3.square") {
-                    EmptyHint(symbol: "internaldrive", title: "还没扫描",
-                              detail: "扫描你的用户目录（\(Paths.home.tildePath)），用方块图显示每个文件夹占了多少空间。\n第一次扫描大概需要几十秒。")
+                Card(L("看看空间都去哪了", "See where your space went"), symbol: "square.grid.3x3.square") {
+                    EmptyHint(symbol: "internaldrive", title: L("还没扫描", "Not scanned yet"),
+                              detail: L("扫描你的用户目录（\(Paths.home.tildePath)），用方块图显示每个文件夹占了多少空间。\n第一次扫描大概需要几十秒。", "Scans your home folder (\(Paths.home.tildePath)) and shows how much space each folder takes in a treemap.\nThe first scan takes about a minute or less."))
                     HStack {
                         Spacer()
-                        Button { scan.scan(Paths.home) } label: { Label("开始扫描", systemImage: "play.fill") }
+                        Button { scan.scan(Paths.home) } label: { Label(L("开始扫描", "Start scan"), systemImage: "play.fill") }
                             .buttonStyle(.borderedProminent).controlSize(.large)
                         Spacer()
                     }
@@ -135,9 +135,9 @@ struct DiskView: View {
                 Text(h.isAggregate ? h.name : h.url.tildePath).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 Text(Fmt.bytes(h.size)).monospacedDigit().fontWeight(.medium)
-                if h.isDirectory { Text("· 点击进入").foregroundStyle(.secondary) }
+                if h.isDirectory { Text(L("· 点击进入", "· Click to open")).foregroundStyle(.secondary) }
             } else {
-                Text("鼠标移到方块上查看详情，点击文件夹进入，右键可以在 Finder 中显示或移到废纸篓").foregroundStyle(.secondary)
+                Text(L("鼠标移到方块上查看详情，点击文件夹进入，右键可以在 Finder 中显示或移到废纸篓", "Hover a block for details, click a folder to open it, right-click to show in Finder or move to Trash")).foregroundStyle(.secondary)
                 Spacer()
             }
         }
@@ -157,8 +157,8 @@ struct DiskView: View {
                     .fontWeight(n == node ? .semibold : .regular)
             }
             Spacer()
-            Text("\(Fmt.bytes(node.size)) · \(node.fileCount) 个文件").foregroundStyle(.secondary).monospacedDigit()
-            if let t = app.disk.lastScan { Text("· 扫描于 \(Fmt.time(t))").foregroundStyle(.tertiary) }
+            Text(L("\(Fmt.bytes(node.size)) · \(node.fileCount) 个文件", "\(Fmt.bytes(node.size)) · \(node.fileCount) files")).foregroundStyle(.secondary).monospacedDigit()
+            if let t = app.disk.lastScan { Text(L("· 扫描于 \(Fmt.time(t))", "· Scanned at \(Fmt.time(t))")).foregroundStyle(.tertiary) }
         }
         .font(.callout)
     }
@@ -204,7 +204,7 @@ struct DiskView: View {
         p.canChooseFiles = false
         p.allowsMultipleSelection = false
         p.directoryURL = Paths.home
-        p.prompt = "扫描"
+        p.prompt = L("扫描", "Scan")
         if p.runModal() == .OK, let u = p.url { app.disk.scan(u) }
     }
 }

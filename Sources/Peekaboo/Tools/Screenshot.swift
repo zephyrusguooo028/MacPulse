@@ -20,11 +20,11 @@ enum ShotTool: String, CaseIterable, Identifiable {
     }
     var title: String {
         switch self {
-        case .rect: return "矩形"
-        case .arrow: return "箭头"
-        case .pen: return "画笔"
-        case .text: return "文字"
-        case .mosaic: return "马赛克"
+        case .rect: return L("矩形", "Rectangle")
+        case .arrow: return L("箭头", "Arrow")
+        case .pen: return L("画笔", "Pen")
+        case .text: return L("文字", "Text")
+        case .mosaic: return L("马赛克", "Mosaic")
         }
     }
 }
@@ -171,7 +171,7 @@ final class ScreenshotController {
         guard windows.isEmpty else { return }
         guard hasPermission else {
             _ = CGRequestScreenCaptureAccess()
-            if FileActions.confirm("需要「屏幕录制」权限", "截图需要在 系统设置 › 隐私与安全性 › 屏幕录制 里允许 Peekaboo。授权后可能需要重新打开 Peekaboo。", ok: "打开系统设置", destructive: false),
+            if FileActions.confirm(L("需要「屏幕录制」权限", "Screen Recording permission required"), L("截图需要在 系统设置 › 隐私与安全性 › 屏幕录制 里允许 Peekaboo。授权后可能需要重新打开 Peekaboo。", "To take screenshots, allow Peekaboo in System Settings › Privacy & Security › Screen Recording. You may need to reopen Peekaboo afterwards."), ok: L("打开系统设置", "Open System Settings"), destructive: false),
                let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
                 NSWorkspace.shared.open(u)
             }
@@ -261,7 +261,7 @@ final class ScreenshotController {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH.mm.ss"
         let folder = URL(fileURLWithPath: (AppSettings.shared.shotFolder as NSString).expandingTildeInPath)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appendingPathComponent("截图 \(f.string(from: Date())).png")
+        let url = folder.appendingPathComponent(L("截图 \(f.string(from: Date())).png", "Screenshot \(f.string(from: Date())).png"))
         if let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
             try? png.write(to: url)
             NSPasteboard.general.clearContents()
@@ -361,7 +361,7 @@ struct CaptureView: View {
             .gesture(DragGesture(minimumDistance: 0).onChanged(dragChanged).onEnded(dragEnded))
 
             if let at = s.textAt {
-                TextField("输入文字，回车完成", text: $session.textValue)
+                TextField(L("输入文字，回车完成", "Type text, press Return to finish"), text: $session.textValue)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12 + s.width * 3, weight: .semibold))
                     .foregroundStyle(s.color)
@@ -502,18 +502,18 @@ private struct ShotToolbar: View {
                     .onTapGesture { session.color = c }
             }
             Menu {
-                ForEach([2, 3, 5, 8], id: \.self) { w in Button("\(w) 号") { session.width = CGFloat(w) } }
+                ForEach([2, 3, 5, 8], id: \.self) { w in Button(L("\(w) 号", "Size \(w)")) { session.width = CGFloat(w) } }
             } label: { Image(systemName: "lineweight") }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28).help("粗细")
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28).help(L("粗细", "Line width"))
             divider
-            button("arrow.uturn.backward", "撤销 ⌘Z", selected: false) { ScreenshotController.shared.undo() }
-            button("pin", "贴到屏幕", selected: false) { ScreenshotController.shared.pin() }
-            button("square.and.arrow.down", "保存", selected: false) { ScreenshotController.shared.save() }
-            button("xmark", "取消 Esc", selected: false) { ScreenshotController.shared.finish() }
+            button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), selected: false) { ScreenshotController.shared.undo() }
+            button("pin", L("贴到屏幕", "Pin to screen"), selected: false) { ScreenshotController.shared.pin() }
+            button("square.and.arrow.down", L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
+            button("xmark", L("取消 Esc", "Cancel Esc"), selected: false) { ScreenshotController.shared.finish() }
             Button { ScreenshotController.shared.copyAndClose() } label: {
-                Label("复制", systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
+                Label(L("复制", "Copy"), systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
             }
-            .buttonStyle(.borderedProminent).controlSize(.small).help("复制到剪贴板（回车 / 双击）")
+            .buttonStyle(.borderedProminent).controlSize(.small).help(L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Return / double-click)"))
             .padding(.leading, 4)
         }
         .padding(5)
@@ -577,17 +577,17 @@ final class PinWindow: NSPanel {
 
     func menu() -> NSMenu {
         let m = NSMenu()
-        m.addItem(withTitle: "复制", action: #selector(copyImage), keyEquivalent: "").target = self
-        m.addItem(withTitle: "另存为…", action: #selector(saveImage), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("复制", "Copy"), action: #selector(copyImage), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("另存为…", "Save As…"), action: #selector(saveImage), keyEquivalent: "").target = self
         m.addItem(.separator())
-        for (t, a) in [("不透明", 1.0), ("透明 25%", 0.75), ("透明 50%", 0.5)] {
+        for (t, a) in [(L("不透明", "Opaque"), 1.0), (L("透明 25%", "25% transparent"), 0.75), (L("透明 50%", "50% transparent"), 0.5)] {
             let i = m.addItem(withTitle: t, action: #selector(setAlpha(_:)), keyEquivalent: "")
             i.target = self; i.representedObject = a
             i.state = abs(alphaValue - a) < 0.01 ? .on : .off
         }
-        m.addItem(withTitle: "原始大小", action: #selector(resetZoom), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("原始大小", "Actual size"), action: #selector(resetZoom), keyEquivalent: "").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "关闭", action: #selector(closeMe), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("关闭", "Close"), action: #selector(closeMe), keyEquivalent: "").target = self
         return m
     }
 
@@ -597,7 +597,7 @@ final class PinWindow: NSPanel {
     @objc private func closeMe() { close() }
     @objc private func saveImage() {
         let p = NSSavePanel()
-        p.nameFieldStringValue = "截图.png"
+        p.nameFieldStringValue = L("截图.png", "Screenshot.png")
         p.allowedContentTypes = [.png]
         if p.runModal() == .OK, let url = p.url, let tiff = image.tiffRepresentation,
            let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {

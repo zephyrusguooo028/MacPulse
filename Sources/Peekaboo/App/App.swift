@@ -41,14 +41,14 @@ enum MainTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .overview: return "概览"
-        case .disk: return "磁盘"
-        case .projects: return "项目"
-        case .processes: return "进程"
-        case .cleanup: return "清理"
-        case .typing: return "打字"
-        case .screenshot: return "截图"
-        case .settings: return "设置"
+        case .overview: return L("概览", "Overview")
+        case .disk: return L("磁盘", "Disk")
+        case .projects: return L("项目", "Projects")
+        case .processes: return L("进程", "Processes")
+        case .cleanup: return L("清理", "Clean up")
+        case .typing: return L("打字", "Typing")
+        case .screenshot: return L("截图", "Screenshot")
+        case .settings: return L("设置", "Settings")
         }
     }
     var symbol: String {

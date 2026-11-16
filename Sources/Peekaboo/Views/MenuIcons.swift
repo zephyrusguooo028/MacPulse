@@ -10,16 +10,16 @@ enum MenuIcon: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .none: return "不显示"
-        case .slime: return "史莱姆"
-        case .ghost: return "小幽灵"
-        case .chick: return "小鸡"
-        case .whale: return "小鲸鱼"
-        case .rocket: return "火箭"
-        case .heart: return "心跳"
-        case .pulse: return "脉搏线"
-        case .fan: return "风扇"
-        case .bars: return "均衡器"
+        case .none: return L("不显示", "None")
+        case .slime: return L("史莱姆", "Slime")
+        case .ghost: return L("小幽灵", "Ghost")
+        case .chick: return L("小鸡", "Chick")
+        case .whale: return L("小鲸鱼", "Whale")
+        case .rocket: return L("火箭", "Rocket")
+        case .heart: return L("心跳", "Heartbeat")
+        case .pulse: return L("脉搏线", "Pulse line")
+        case .fan: return L("风扇", "Fan")
+        case .bars: return L("均衡器", "Equalizer")
         }
     }
 
@@ -56,15 +56,15 @@ enum MenuMetric: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .cpu: return "CPU 占用"
-        case .cpuGraph: return "CPU 走势图"
-        case .memory: return "内存占用"
-        case .disk: return "磁盘剩余"
-        case .network: return "网速"
-        case .temperature: return "温度"
-        case .gpu: return "GPU 占用"
-        case .battery: return "电池"
-        case .typing: return "今日打字"
+        case .cpu: return L("CPU 占用", "CPU usage")
+        case .cpuGraph: return L("CPU 走势图", "CPU graph")
+        case .memory: return L("内存占用", "Memory usage")
+        case .disk: return L("磁盘剩余", "Free disk space")
+        case .network: return L("网速", "Network speed")
+        case .temperature: return L("温度", "Temperature")
+        case .gpu: return L("GPU 占用", "GPU usage")
+        case .battery: return L("电池", "Battery")
+        case .typing: return L("今日打字", "Typing today")
         }
     }
 
@@ -73,16 +73,16 @@ enum MenuMetric: String, CaseIterable, Identifiable {
         switch self {
         case .cpu: return "CPU \(Int((m.cpu.total * 100).rounded()))%"
         case .cpuGraph: return nil
-        case .memory: return "内存 \(Int((m.memory.usedFraction * 100).rounded()))%"
-        case .disk: return "剩 \(MenuBarRenderer.diskText(m.disk.available))"
+        case .memory: return L("内存 \(Int((m.memory.usedFraction * 100).rounded()))%", "Mem \(Int((m.memory.usedFraction * 100).rounded()))%")
+        case .disk: return L("剩 \(MenuBarRenderer.diskText(m.disk.available))", "\(MenuBarRenderer.diskText(m.disk.available)) free")
         case .network: return "↓\(Self.short(m.netIn)) ↑\(Self.short(m.netOut))"
         case .temperature: return m.temperature.map { String(format: "%.0f°", $0) }
         case .gpu: return m.gpu.map { "GPU \(Int(($0 * 100).rounded()))%" }
-        case .battery: return m.battery.map { "\($0.charging ? "⚡" : "电")\(Int(($0.percent * 100).rounded()))%" }
+        case .battery: return m.battery.map { "\($0.charging ? "⚡" : L("电", "Bat "))\(Int(($0.percent * 100).rounded()))%" }
         case .typing:
             guard AppSettings.shared.typingEnabled else { return nil }
-            guard TypingMonitor.shared.running else { return "打字 未开始" }
-            return "打字 " + TypingMonitor.shared.today.total.formatted(.number.grouping(.automatic))
+            guard TypingMonitor.shared.running else { return L("打字 未开始", "Typing off") }
+            return L("打字 ", "Keys ") + TypingMonitor.shared.today.total.formatted(.number.grouping(.automatic))
         }
     }
 
@@ -100,14 +100,14 @@ enum MenuMetric: String, CaseIterable, Identifiable {
 @MainActor
 func statusSentence(_ m: SystemMonitor, _ s: AppSettings) -> String {
     let cpu = Fmt.pct(m.cpu.total)
-    if m.memory.pressureLevel >= 4 { return "内存压力很大，可以关掉一些应用" }
+    if m.memory.pressureLevel >= 4 { return L("内存压力很大，可以关掉一些应用", "Memory pressure is high, consider quitting some apps") }
     if m.disk.total > 0, Double(m.disk.available) < Double(s.alertDiskGB) * 1_073_741_824 {
-        return "磁盘只剩 \(Fmt.bytes(m.disk.available))，去清理一下吧"
+        return L("磁盘只剩 \(Fmt.bytes(m.disk.available))，去清理一下吧", "Only \(Fmt.bytes(m.disk.available)) of disk left, time to clean up")
     }
-    if m.cpu.total > 0.9 { return "CPU 满载中 \(cpu)" }
-    if m.cpu.total > 0.6 { return "有点忙，CPU \(cpu)" }
-    if m.cpu.total < 0.08 { return "很清闲，CPU \(cpu)" }
-    return "运行正常，CPU \(cpu)"
+    if m.cpu.total > 0.9 { return L("CPU 满载中 \(cpu)", "CPU maxed out at \(cpu)") }
+    if m.cpu.total > 0.6 { return L("有点忙，CPU \(cpu)", "A bit busy, CPU \(cpu)") }
+    if m.cpu.total < 0.08 { return L("很清闲，CPU \(cpu)", "Nice and idle, CPU \(cpu)") }
+    return L("运行正常，CPU \(cpu)", "Running normally, CPU \(cpu)")
 }
 
 /// Advances the shared frame counter. The frame rate follows CPU load and the timer

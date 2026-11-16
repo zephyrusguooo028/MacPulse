@@ -11,30 +11,30 @@ struct ProjectsView: View {
         let pm = app.projects
         let list = sorted(pm.projects)
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(title: "项目",
-                       subtitle: pm.projects.isEmpty ? "自动找出开发项目，看源码、依赖和构建产物各占多少"
-                                                     : "\(pm.projects.count) 个项目，共 \(Fmt.bytes(pm.projects.reduce(0) { $0 + $1.totalSize }))，其中依赖和构建产物 \(Fmt.bytes(pm.totalArtifacts))") {
+            PageHeader(title: L("项目", "Projects"),
+                       subtitle: pm.projects.isEmpty ? L("自动找出开发项目，看源码、依赖和构建产物各占多少", "Finds your development projects and shows how much space source, dependencies and build output take")
+                                                     : L("\(pm.projects.count) 个项目，共 \(Fmt.bytes(pm.projects.reduce(0) { $0 + $1.totalSize }))，其中依赖和构建产物 \(Fmt.bytes(pm.totalArtifacts))", "\(pm.projects.count) projects, \(Fmt.bytes(pm.projects.reduce(0) { $0 + $1.totalSize })) in total, \(Fmt.bytes(pm.totalArtifacts)) of it dependencies and build output")) {
                 HStack {
                     if pm.scanning {
                         ProgressView().controlSize(.small)
                         Text(pm.status).foregroundStyle(.secondary).font(.callout)
                     }
-                    Picker("排序", selection: $sort) {
-                        Text("按总大小").tag("total")
-                        Text("按可清理").tag("artifacts")
-                        Text("按最近修改").tag("recent")
-                        Text("按最久没动").tag("stale")
+                    Picker(L("排序", "Sort"), selection: $sort) {
+                        Text(L("按总大小", "By total size")).tag("total")
+                        Text(L("按可清理", "By cleanable")).tag("artifacts")
+                        Text(L("按最近修改", "By recently modified")).tag("recent")
+                        Text(L("按最久没动", "By least recently touched")).tag("stale")
                     }
                     .frame(width: 150)
-                    Button { pm.scan() } label: { Label(pm.projects.isEmpty ? "扫描项目" : "重新扫描", systemImage: "arrow.clockwise") }
+                    Button { pm.scan() } label: { Label(pm.projects.isEmpty ? L("扫描项目", "Scan projects") : L("重新扫描", "Rescan"), systemImage: "arrow.clockwise") }
                         .buttonStyle(.borderedProminent).disabled(pm.scanning)
                 }
             }
 
             if pm.projects.isEmpty {
-                Card("项目目录", symbol: "folder") {
-                    EmptyHint(symbol: "folder.badge.gearshape", title: pm.scanning ? "正在扫描…" : "还没扫描",
-                              detail: "会在这些目录里找项目：\(app.settings.projectRootURLs.map(\.tildePath).joined(separator: "、"))\n可以在设置里修改。")
+                Card(L("项目目录", "Project folders"), symbol: "folder") {
+                    EmptyHint(symbol: "folder.badge.gearshape", title: pm.scanning ? L("正在扫描…", "Scanning…") : L("还没扫描", "Not scanned yet"),
+                              detail: L("会在这些目录里找项目：\(app.settings.projectRootURLs.map(\.tildePath).joined(separator: "、"))\n可以在设置里修改。", "Looks for projects in: \(app.settings.projectRootURLs.map(\.tildePath).joined(separator: ", "))\nYou can change this in Settings."))
                 }
                 Spacer()
             } else {
@@ -61,18 +61,18 @@ struct ProjectsView: View {
 
     private func summaryChart(_ list: [Project]) -> some View {
         let top = Array(list.sorted { $0.totalSize > $1.totalSize }.prefix(8))
-        return Card("空间构成（前 \(top.count) 个）", symbol: "chart.bar.xaxis") {
+        return Card(L("空间构成（前 \(top.count) 个）", "Space breakdown (top \(top.count))"), symbol: "chart.bar.xaxis") {
             Chart {
                 ForEach(top) { p in
-                    BarMark(x: .value("大小", Double(p.sourceSize) / 1_048_576), y: .value("项目", p.displayName))
-                        .foregroundStyle(by: .value("类型", "源码"))
-                    BarMark(x: .value("大小", Double(p.gitSize) / 1_048_576), y: .value("项目", p.displayName))
-                        .foregroundStyle(by: .value("类型", "Git 历史"))
-                    BarMark(x: .value("大小", Double(p.artifactSize) / 1_048_576), y: .value("项目", p.displayName))
-                        .foregroundStyle(by: .value("类型", "依赖/构建产物"))
+                    BarMark(x: .value(L("大小", "Size"), Double(p.sourceSize) / 1_048_576), y: .value(L("项目", "Project"), p.displayName))
+                        .foregroundStyle(by: .value(L("类型", "Type"), L("源码", "Source")))
+                    BarMark(x: .value(L("大小", "Size"), Double(p.gitSize) / 1_048_576), y: .value(L("项目", "Project"), p.displayName))
+                        .foregroundStyle(by: .value(L("类型", "Type"), L("Git 历史", "Git history")))
+                    BarMark(x: .value(L("大小", "Size"), Double(p.artifactSize) / 1_048_576), y: .value(L("项目", "Project"), p.displayName))
+                        .foregroundStyle(by: .value(L("类型", "Type"), L("依赖/构建产物", "Dependencies/build output")))
                 }
             }
-            .chartForegroundStyleScale(["源码": Palette.cpu, "Git 历史": Palette.mem, "依赖/构建产物": Palette.netOut])
+            .chartForegroundStyleScale([L("源码", "Source"): Palette.cpu, L("Git 历史", "Git history"): Palette.mem, L("依赖/构建产物", "Dependencies/build output"): Palette.netOut])
             .chartXAxis { AxisMarks { v in AxisGridLine(); AxisValueLabel { Text(Fmt.bytes((v.as(Double.self) ?? 0) * 1_048_576)) } } }
             .chartLegend(position: .top, alignment: .leading)
             .frame(height: CGFloat(max(top.count, 1)) * 24 + 40)
@@ -95,7 +95,7 @@ struct ProjectsView: View {
                                         .background(Capsule().fill(Color.primary.opacity(0.07)))
                                 }
                                 if stale {
-                                    Text("\(Fmt.daysAgo(p.lastModified)) 天没动").font(.caption2).foregroundStyle(Palette.warn)
+                                    Text(L("\(Fmt.daysAgo(p.lastModified)) 天没动", "Untouched \(Fmt.daysAgo(p.lastModified)) days")).font(.caption2).foregroundStyle(Palette.warn)
                                 }
                                 Spacer()
                                 Text(Fmt.bytes(p.totalSize)).monospacedDigit().fontWeight(.medium)
@@ -112,11 +112,11 @@ struct ProjectsView: View {
                             }
                             .frame(height: 6)
                             HStack {
-                                Text("源码 \(Fmt.bytes(p.sourceSize))")
+                                Text(L("源码 \(Fmt.bytes(p.sourceSize))", "Source \(Fmt.bytes(p.sourceSize))"))
                                 if p.gitSize > 0 { Text("· Git \(Fmt.bytes(p.gitSize))") }
-                                if p.artifactSize > 0 { Text("· 可清理 \(Fmt.bytes(p.artifactSize))").foregroundStyle(Palette.netOut) }
+                                if p.artifactSize > 0 { Text(L("· 可清理 \(Fmt.bytes(p.artifactSize))", "· \(Fmt.bytes(p.artifactSize)) cleanable")).foregroundStyle(Palette.netOut) }
                                 Spacer()
-                                Text("\(Fmt.relative(p.lastModified))修改")
+                                Text(L("\(Fmt.relative(p.lastModified))修改", "Modified \(Fmt.relative(p.lastModified))"))
                             }
                             .font(.caption).foregroundStyle(.secondary)
                         }
@@ -126,8 +126,8 @@ struct ProjectsView: View {
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
-                        Button("在 Finder 中显示") { FileActions.reveal(p.url) }
-                        Button("在终端中打开") { FileActions.openInTerminal(p.url) }
+                        Button(L("在 Finder 中显示", "Show in Finder")) { FileActions.reveal(p.url) }
+                        Button(L("在终端中打开", "Open in Terminal")) { FileActions.openInTerminal(p.url) }
                     }
                 }
             }
@@ -143,20 +143,20 @@ struct ProjectsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(p.url.tildePath).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     StackedBar(segments: [
-                        Segment(label: "源码", value: Double(p.sourceSize), color: Palette.cpu),
+                        Segment(label: L("源码", "Source"), value: Double(p.sourceSize), color: Palette.cpu),
                         Segment(label: "Git", value: Double(p.gitSize), color: Palette.mem),
-                        Segment(label: "可清理", value: Double(p.artifactSize), color: Palette.netOut),
+                        Segment(label: L("可清理", "Cleanable"), value: Double(p.artifactSize), color: Palette.netOut),
                     ], height: 12)
                     HStack {
-                        Button("在 Finder 中显示") { FileActions.reveal(p.url) }
-                        Button("在终端中打开") { FileActions.openInTerminal(p.url) }
+                        Button(L("在 Finder 中显示", "Show in Finder")) { FileActions.reveal(p.url) }
+                        Button(L("在终端中打开", "Open in Terminal")) { FileActions.openInTerminal(p.url) }
                     }
                     .controlSize(.small)
                     Divider()
                     if p.artifacts.isEmpty {
-                        Text("没有可清理的依赖或构建产物。").foregroundStyle(.secondary)
+                        Text(L("没有可清理的依赖或构建产物。", "No dependencies or build output to clean.")).foregroundStyle(.secondary)
                     } else {
-                        Text("依赖与构建产物").font(.subheadline.weight(.semibold))
+                        Text(L("依赖与构建产物", "Dependencies & build output")).font(.subheadline.weight(.semibold))
                         ScrollView {
                             VStack(spacing: 6) {
                                 ForEach(p.artifacts) { a in
@@ -166,32 +166,32 @@ struct ProjectsView: View {
                                             .toggleStyle(.checkbox).labelsHidden()
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(a.url.path.replacingOccurrences(of: p.url.path + "/", with: "")).lineLimit(1).truncationMode(.middle)
-                                            Text(a.safe ? "\(a.kind.rawValue) · \(a.kind.hint)" : "\(a.kind.rawValue) · 不在 .gitignore 里，可能是源码，请确认")
+                                            Text(a.safe ? "\(a.kind.title) · \(a.kind.hint)" : L("\(a.kind.title) · 不在 .gitignore 里，可能是源码，请确认", "\(a.kind.title) · not in .gitignore, may be source code, please check"))
                                                 .font(.caption).foregroundStyle(a.safe ? Color.secondary : Palette.warn)
                                         }
                                         Spacer()
                                         Text(Fmt.bytes(a.size)).monospacedDigit()
                                     }
-                                    .contextMenu { Button("在 Finder 中显示") { FileActions.reveal(a.url) } }
+                                    .contextMenu { Button(L("在 Finder 中显示", "Show in Finder")) { FileActions.reveal(a.url) } }
                                 }
                             }
                         }
                         .frame(maxHeight: 260)
                         let size = p.artifacts.filter { picked.contains($0.url) }.reduce(Int64(0)) { $0 + $1.size }
                         HStack {
-                            Text("已选 \(Fmt.bytes(size))").monospacedDigit()
+                            Text(L("已选 \(Fmt.bytes(size))", "\(Fmt.bytes(size)) selected")).monospacedDigit()
                             Spacer()
-                            Button("移到废纸篓…") { clean(p, permanent: false) }
+                            Button(L("移到废纸篓…", "Move to Trash…")) { clean(p, permanent: false) }
                                 .disabled(picked.isEmpty || app.cleanup.working)
-                            Button("直接删除…") { clean(p, permanent: true) }
+                            Button(L("直接删除…", "Delete immediately…")) { clean(p, permanent: true) }
                                 .disabled(picked.isEmpty || app.cleanup.working)
                         }
                     }
                 }
             }
         } else {
-            Card("详情", symbol: "info.circle") {
-                EmptyHint(symbol: "hand.point.left", title: "选一个项目", detail: "左边点一个项目，查看它的依赖和构建产物，并可以单独清理。")
+            Card(L("详情", "Details"), symbol: "info.circle") {
+                EmptyHint(symbol: "hand.point.left", title: L("选一个项目", "Select a project"), detail: L("左边点一个项目，查看它的依赖和构建产物，并可以单独清理。", "Click a project on the left to see its dependencies and build output and clean them individually."))
             }
         }
     }
@@ -202,16 +202,16 @@ struct ProjectsView: View {
         }
         let size = items.reduce(Int64(0)) { $0 + $1.size }
         let msg = items.map { "• " + $0.url.tildePath }.prefix(8).joined(separator: "\n")
-            + (items.count > 8 ? "\n…等 \(items.count) 项" : "")
-            + (permanent ? "\n\n直接删除不能恢复。这些目录可以通过重新安装依赖或重新构建生成。" : "\n\n可以在废纸篓里恢复；清空废纸篓后才会释放空间。")
-        guard FileActions.confirm(permanent ? "直接删除 \(Fmt.bytes(size))？" : "把 \(Fmt.bytes(size)) 移到废纸篓？", msg,
-                                  ok: permanent ? "删除" : "移到废纸篓") else { return }
+            + (items.count > 8 ? L("\n…等 \(items.count) 项", "\n…\(items.count) items in total") : "")
+            + (permanent ? L("\n\n直接删除不能恢复。这些目录可以通过重新安装依赖或重新构建生成。", "\n\nDeleted items can't be restored. These folders can be regenerated by reinstalling dependencies or rebuilding.") : L("\n\n可以在废纸篓里恢复；清空废纸篓后才会释放空间。", "\n\nYou can restore them from the Trash; space is freed once you empty the Trash."))
+        guard FileActions.confirm(permanent ? L("直接删除 \(Fmt.bytes(size))？", "Delete \(Fmt.bytes(size)) immediately?") : L("把 \(Fmt.bytes(size)) 移到废纸篓？", "Move \(Fmt.bytes(size)) to the Trash?"), msg,
+                                  ok: permanent ? L("删除", "Delete") : L("移到废纸篓", "Move to Trash")) else { return }
         app.cleanup.perform(items, permanent: permanent) { o in
             let done = Set(items.map(\.url)).subtracting(o.failures.map(\.0)).subtracting(o.skipped)
             app.projects.removed(done)
             picked.subtract(done)
             if !o.failures.isEmpty {
-                _ = FileActions.confirm("有 \(o.failures.count) 项没清理成功", o.failures.map { "\($0.0.tildePath)：\($0.1)" }.joined(separator: "\n"), ok: "好", destructive: false)
+                _ = FileActions.confirm(L("有 \(o.failures.count) 项没清理成功", "\(o.failures.count) items couldn't be cleaned"), o.failures.map { L("\($0.0.tildePath)：\($0.1)", "\($0.0.tildePath): \($0.1)") }.joined(separator: "\n"), ok: L("好", "OK"), destructive: false)
             }
         }
     }

@@ -7,12 +7,12 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .devCache: return "开发工具缓存"
-        case .projectArtifacts: return "项目依赖与构建产物"
-        case .appCache: return "应用缓存"
-        case .logs: return "日志"
-        case .downloads: return "下载文件夹里的旧文件"
-        case .largeFiles: return "大文件"
+        case .devCache: return L("开发工具缓存", "Developer caches")
+        case .projectArtifacts: return L("项目依赖与构建产物", "Project dependencies & build output")
+        case .appCache: return L("应用缓存", "App caches")
+        case .logs: return L("日志", "Logs")
+        case .downloads: return L("下载文件夹里的旧文件", "Old files in Downloads")
+        case .largeFiles: return L("大文件", "Large files")
         }
     }
     var symbol: String {
@@ -27,12 +27,12 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
     }
     var note: String {
         switch self {
-        case .devCache: return "npm / pip / Go 等工具的下载和编译缓存，删掉后下次用到会重新下载。"
-        case .projectArtifacts: return "node_modules、dist 等可重新生成的目录。默认只勾选长期没改动的项目。"
-        case .appCache: return "各应用的缓存。默认只勾选当前没在运行的应用。"
-        case .logs: return "应用和系统写下的日志，通常可以放心删除。"
-        case .downloads: return "下载文件夹里很久没动过的文件和安装包，请自己确认后勾选。"
-        case .largeFiles: return "整个用户目录里的大文件，来自磁盘页的扫描结果，请自己确认后勾选。"
+        case .devCache: return L("npm / pip / Go 等工具的下载和编译缓存，删掉后下次用到会重新下载。", "Download and build caches from npm, pip, Go and other tools. They are re-downloaded the next time they're needed.")
+        case .projectArtifacts: return L("node_modules、dist 等可重新生成的目录。默认只勾选长期没改动的项目。", "Regenerable folders like node_modules and dist. Only projects untouched for a long time are selected by default.")
+        case .appCache: return L("各应用的缓存。默认只勾选当前没在运行的应用。", "Caches of individual apps. Only apps that aren't running are selected by default.")
+        case .logs: return L("应用和系统写下的日志，通常可以放心删除。", "Logs written by apps and the system. Usually safe to delete.")
+        case .downloads: return L("下载文件夹里很久没动过的文件和安装包，请自己确认后勾选。", "Files and installers in Downloads that haven't been touched in a long time. Review before selecting.")
+        case .largeFiles: return L("整个用户目录里的大文件，来自磁盘页的扫描结果，请自己确认后勾选。", "Large files across your home folder, from the Disk scan. Review before selecting.")
         }
     }
 }
@@ -58,28 +58,28 @@ struct CleanupRecord: Codable, Identifiable {
 enum CleanupCatalog {
     struct DevCache { let path: String; let title: String; let recommended: Bool }
 
-    static let devCaches: [DevCache] = [
-        .init(path: "~/.npm/_cacache", title: "npm 缓存", recommended: true),
-        .init(path: "~/Library/Caches/Yarn", title: "Yarn 缓存", recommended: true),
-        .init(path: "~/Library/Caches/yarn", title: "Yarn 缓存", recommended: true),
-        .init(path: "~/Library/pnpm/store", title: "pnpm 存储", recommended: false),
-        .init(path: "~/.bun/install/cache", title: "Bun 缓存", recommended: true),
-        .init(path: "~/Library/Caches/pip", title: "pip 缓存", recommended: true),
-        .init(path: "~/.cache/pip", title: "pip 缓存", recommended: true),
-        .init(path: "~/Library/Caches/go-build", title: "Go 编译缓存", recommended: true),
-        .init(path: "~/Library/Caches/Homebrew", title: "Homebrew 下载缓存", recommended: true),
-        .init(path: "~/Library/Caches/node-gyp", title: "node-gyp 缓存", recommended: true),
-        .init(path: "~/Library/Caches/CocoaPods", title: "CocoaPods 缓存", recommended: true),
-        .init(path: "~/Library/Caches/ms-playwright", title: "Playwright 浏览器", recommended: false),
-        .init(path: "~/Library/Caches/com.apple.dt.Xcode", title: "Xcode 缓存", recommended: true),
+    static var devCaches: [DevCache] { [
+        .init(path: "~/.npm/_cacache", title: L("npm 缓存", "npm cache"), recommended: true),
+        .init(path: "~/Library/Caches/Yarn", title: L("Yarn 缓存", "Yarn cache"), recommended: true),
+        .init(path: "~/Library/Caches/yarn", title: L("Yarn 缓存", "Yarn cache"), recommended: true),
+        .init(path: "~/Library/pnpm/store", title: L("pnpm 存储", "pnpm store"), recommended: false),
+        .init(path: "~/.bun/install/cache", title: L("Bun 缓存", "Bun cache"), recommended: true),
+        .init(path: "~/Library/Caches/pip", title: L("pip 缓存", "pip cache"), recommended: true),
+        .init(path: "~/.cache/pip", title: L("pip 缓存", "pip cache"), recommended: true),
+        .init(path: "~/Library/Caches/go-build", title: L("Go 编译缓存", "Go build cache"), recommended: true),
+        .init(path: "~/Library/Caches/Homebrew", title: L("Homebrew 下载缓存", "Homebrew download cache"), recommended: true),
+        .init(path: "~/Library/Caches/node-gyp", title: L("node-gyp 缓存", "node-gyp cache"), recommended: true),
+        .init(path: "~/Library/Caches/CocoaPods", title: L("CocoaPods 缓存", "CocoaPods cache"), recommended: true),
+        .init(path: "~/Library/Caches/ms-playwright", title: L("Playwright 浏览器", "Playwright browsers"), recommended: false),
+        .init(path: "~/Library/Caches/com.apple.dt.Xcode", title: L("Xcode 缓存", "Xcode cache"), recommended: true),
         .init(path: "~/Library/Developer/Xcode/DerivedData", title: "Xcode DerivedData", recommended: true),
-        .init(path: "~/Library/Developer/Xcode/iOS DeviceSupport", title: "iOS 设备支持文件", recommended: false),
-        .init(path: "~/Library/Developer/Xcode/Archives", title: "Xcode 归档", recommended: false),
-        .init(path: "~/Library/Developer/CoreSimulator/Caches", title: "模拟器缓存", recommended: true),
-        .init(path: "~/.gradle/caches", title: "Gradle 缓存", recommended: true),
-        .init(path: "~/.cargo/registry/cache", title: "Cargo 下载缓存", recommended: true),
-        .init(path: "~/.cache/huggingface", title: "Hugging Face 模型缓存", recommended: false),
-    ]
+        .init(path: "~/Library/Developer/Xcode/iOS DeviceSupport", title: L("iOS 设备支持文件", "iOS device support files"), recommended: false),
+        .init(path: "~/Library/Developer/Xcode/Archives", title: L("Xcode 归档", "Xcode archives"), recommended: false),
+        .init(path: "~/Library/Developer/CoreSimulator/Caches", title: L("模拟器缓存", "Simulator caches"), recommended: true),
+        .init(path: "~/.gradle/caches", title: L("Gradle 缓存", "Gradle cache"), recommended: true),
+        .init(path: "~/.cargo/registry/cache", title: L("Cargo 下载缓存", "Cargo download cache"), recommended: true),
+        .init(path: "~/.cache/huggingface", title: L("Hugging Face 模型缓存", "Hugging Face model cache"), recommended: false),
+    ] }
 
     static func expand(_ p: String) -> URL { URL(fileURLWithPath: (p as NSString).expandingTildeInPath) }
 }
@@ -108,7 +108,7 @@ enum CleanupScanner {
             guard s > 10 * 1024 * 1024 else { return nil }
             let id = u.lastPathComponent
             let (name, isRunning) = appName(forCacheFolder: id, running: running)
-            let sub = isRunning ? "\(u.tildePath) · 正在运行" : u.tildePath
+            let sub = isRunning ? L("\(u.tildePath) · 正在运行", "\(u.tildePath) · Running") : u.tildePath
             return CleanupItem(url: u, title: name, subtitle: sub, size: s, category: .appCache,
                                recommended: !isRunning && !id.hasPrefix("com.apple."))
         }
@@ -185,8 +185,8 @@ enum CleanupScanner {
             guard last < cutoff || (isInstaller && last < installerCutoff) else { return nil }
             let s = FileSizer.size(of: u)
             guard s > 5 * 1024 * 1024 else { return nil }
-            let kind = isInstaller ? "安装包/压缩包" : "文件"
-            return CleanupItem(url: u, title: u.lastPathComponent, subtitle: "\(kind) · \(Fmt.daysAgo(last)) 天没动过",
+            let kind = isInstaller ? L("安装包/压缩包", "Installer/archive") : L("文件", "File")
+            return CleanupItem(url: u, title: u.lastPathComponent, subtitle: L("\(kind) · \(Fmt.daysAgo(last)) 天没动过", "\(kind) · untouched for \(Fmt.daysAgo(last)) days"),
                                size: s, category: .downloads, recommended: false)
         }
     }
@@ -256,15 +256,15 @@ final class CleanupModel {
         for p in projects.projects {
             let stale = Fmt.daysAgo(p.lastModified) >= staleDays
             for a in p.artifacts where a.size > 1024 * 1024 {
-                let note = a.safe ? a.kind.rawValue : "\(a.kind.rawValue)（未在 .gitignore 中，请确认）"
+                let note = a.safe ? a.kind.title : L("\(a.kind.title)（未在 .gitignore 中，请确认）", "\(a.kind.title) (not in .gitignore, please check)")
                 arts.append(CleanupItem(url: a.url, title: "\(p.displayName) / \(a.url.lastPathComponent)",
-                                        subtitle: "\(note) · 项目 \(Fmt.relative(p.lastModified))修改",
+                                        subtitle: L("\(note) · 项目 \(Fmt.relative(p.lastModified))修改", "\(note) · project modified \(Fmt.relative(p.lastModified))"),
                                         size: a.size, category: .projectArtifacts, recommended: a.safe && stale))
             }
         }
         items[.projectArtifacts] = arts.sorted { $0.size > $1.size }
         items[.largeFiles] = disk.largeFiles.prefix(100).map {
-            CleanupItem(url: $0.url, title: $0.url.lastPathComponent, subtitle: "\($0.url.deletingLastPathComponent().tildePath) · \(Fmt.relative($0.modified))修改",
+            CleanupItem(url: $0.url, title: $0.url.lastPathComponent, subtitle: L("\($0.url.deletingLastPathComponent().tildePath) · \(Fmt.relative($0.modified))修改", "\($0.url.deletingLastPathComponent().tildePath) · modified \(Fmt.relative($0.modified))"),
                         size: $0.size, category: .largeFiles, recommended: false)
         }
     }
@@ -305,8 +305,8 @@ final class CleanupModel {
                 self.trashSize = trash.size
                 if o.count > 0 { self.log(CleanupRecord(date: Date(), bytes: o.freed, count: o.count, permanent: permanent)) }
                 self.working = false
-                self.lastResult = permanent ? "已删除 \(o.count) 项，释放 \(Fmt.bytes(o.freed))"
-                                            : "已把 \(o.count) 项（\(Fmt.bytes(o.freed))）移到废纸篓，清空废纸篓后才会真正释放空间"
+                self.lastResult = permanent ? L("已删除 \(o.count) 项，释放 \(Fmt.bytes(o.freed))", "Deleted \(o.count) items, freed \(Fmt.bytes(o.freed))")
+                                            : L("已把 \(o.count) 项（\(Fmt.bytes(o.freed))）移到废纸篓，清空废纸篓后才会真正释放空间", "Moved \(o.count) items (\(Fmt.bytes(o.freed))) to the Trash. Space is freed once you empty the Trash.")
                 completion(o)
             }
         }
@@ -324,7 +324,7 @@ final class CleanupModel {
                 self.trashSize = after
                 let freed = max(before - after, 0)
                 if freed > 0 { self.log(CleanupRecord(date: Date(), bytes: freed, count: kids.count, permanent: true)) }
-                self.lastResult = "废纸篓已清空，释放 \(Fmt.bytes(freed))"
+                self.lastResult = L("废纸篓已清空，释放 \(Fmt.bytes(freed))", "Trash emptied, freed \(Fmt.bytes(freed))")
                 self.working = false
                 completion(freed)
             }

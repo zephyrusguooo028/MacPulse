@@ -6,9 +6,9 @@ enum PopoverStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .compact: return "紧凑列表"
-        case .cards: return "大数字卡片"
-        case .chart: return "大图表"
+        case .compact: return L("紧凑列表", "Compact list")
+        case .cards: return L("大数字卡片", "Big number cards")
+        case .chart: return L("大图表", "Big chart")
         }
     }
 }
@@ -41,19 +41,19 @@ struct PopoverFooter: View {
     var body: some View {
         HStack(spacing: 6) {
             Button { WindowManager.shared.show(.overview) } label: {
-                Text("打开主窗口").frame(maxWidth: .infinity)
+                Text(L("打开主窗口", "Open main window")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             Button { WindowManager.shared.show(.cleanup) } label: {
-                Label("清理", systemImage: "sparkles").frame(maxWidth: .infinity)
+                Label(L("清理", "Clean up"), systemImage: "sparkles").frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             Button { StatusItemController.shared.closePopover(); ScreenshotController.shared.start(after: 0.25) } label: { Image(systemName: "camera.viewfinder") }
-                .buttonStyle(.borderless).help("截图").padding(.leading, 4)
+                .buttonStyle(.borderless).help(L("截图", "Screenshot")).padding(.leading, 4)
             Button { WindowManager.shared.show(.settings) } label: { Image(systemName: "gearshape") }
-                .buttonStyle(.borderless).help("设置").padding(.leading, 4)
+                .buttonStyle(.borderless).help(L("设置", "Settings")).padding(.leading, 4)
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
-                .buttonStyle(.borderless).help("退出 Peekaboo")
+                .buttonStyle(.borderless).help(L("退出 Peekaboo", "Quit Peekaboo"))
         }
         .controlSize(.regular)
     }
@@ -66,7 +66,7 @@ struct TopApps: View {
     var body: some View {
         VStack(spacing: 6) {
             if app.monitor.groups.isEmpty {
-                Text("读取中…").font(.system(size: 12)).foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L("读取中…", "Loading…")).font(.system(size: 12)).foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
             }
             ForEach(app.monitor.topByCPU.prefix(count)) { g in
                 HStack(spacing: 8) {
@@ -97,16 +97,16 @@ struct CompactPopover: View {
     var body: some View {
         let m = app.monitor
         VStack(spacing: 12) {
-            PopoverHeader(trailing: "已运行 \(SystemInfo.uptimeText())")
+            PopoverHeader(trailing: L("已运行 \(SystemInfo.uptimeText())", "Up \(SystemInfo.uptimeText())"))
             VStack(spacing: 10) {
                 row("cpu", "CPU", m.cpu.total, Fmt.pct(m.cpu.total), Palette.load(m.cpu.total))
-                row("memorychip", "内存", m.memory.usedFraction, Fmt.pct(m.memory.usedFraction),
-                    m.memory.pressureLevel >= 4 ? Palette.danger : Palette.mem, note: "压力\(m.memory.pressureText)")
-                row("internaldrive", "磁盘", m.disk.usedFraction, "剩 \(MenuBarRenderer.diskText(m.disk.available))",
+                row("memorychip", L("内存", "Memory"), m.memory.usedFraction, Fmt.pct(m.memory.usedFraction),
+                    m.memory.pressureLevel >= 4 ? Palette.danger : Palette.mem, note: L("压力\(m.memory.pressureText)", "Pressure \(m.memory.pressureText)"))
+                row("internaldrive", L("磁盘", "Disk"), m.disk.usedFraction, L("剩 \(MenuBarRenderer.diskText(m.disk.available))", "\(MenuBarRenderer.diskText(m.disk.available)) free"),
                     m.disk.usedFraction > 0.9 ? Palette.danger : Palette.disk)
                 HStack(spacing: 10) {
                     icon("network")
-                    Text("网络").frame(width: 34, alignment: .leading)
+                    Text(L("网络", "Net")).frame(width: 34, alignment: .leading)
                     Label(Fmt.rate(m.netIn), systemImage: "arrow.down").foregroundStyle(Palette.netIn)
                     Spacer()
                     Label(Fmt.rate(m.netOut), systemImage: "arrow.up").foregroundStyle(Palette.netOut)
@@ -114,11 +114,11 @@ struct CompactPopover: View {
                 .font(.system(size: 12)).monospacedDigit()
                 HStack(spacing: 10) {
                     icon("thermometer.medium")
-                    Text("其他").frame(width: 34, alignment: .leading)
+                    Text(L("其他", "Other")).frame(width: 34, alignment: .leading)
                     Text(m.temperature.map { String(format: "%.0f°C", $0) } ?? "—")
                     Spacer()
                     Text("GPU \(m.gpu.map { Fmt.pct($0) } ?? "—")")
-                    if let b = m.battery { Text("电池 \(Fmt.pct(b.percent))") }
+                    if let b = m.battery { Text(L("电池 \(Fmt.pct(b.percent))", "Battery \(Fmt.pct(b.percent))")) }
                 }
                 .font(.system(size: 12)).monospacedDigit()
             }
@@ -126,7 +126,7 @@ struct CompactPopover: View {
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.045)))
 
             VStack(spacing: 8) {
-                sectionTitle("占用最高")
+                sectionTitle(L("占用最高", "Top apps"))
                 TopApps(count: 3)
             }
             .padding(12)
@@ -171,13 +171,13 @@ struct CardsPopover: View {
         VStack(spacing: 12) {
             PopoverHeader(trailing: Fmt.time(Date()))
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
-                card("CPU", "cpu", Fmt.pct(m.cpu.total), sub: "\(m.coreLetters.count) 核", color: Palette.cpu,
+                card("CPU", "cpu", Fmt.pct(m.cpu.total), sub: L("\(m.coreLetters.count) 核", "\(m.coreLetters.count) cores"), color: Palette.cpu,
                      spark: m.samples.suffix(60).map(\.cpu), maxV: 1)
-                card("内存", "memorychip", Fmt.pct(m.memory.usedFraction), sub: "压力\(m.memory.pressureText)",
+                card(L("内存", "Memory"), "memorychip", Fmt.pct(m.memory.usedFraction), sub: L("压力\(m.memory.pressureText)", "Pressure \(m.memory.pressureText)"),
                      color: m.memory.pressureLevel >= 4 ? Palette.danger : Palette.mem, spark: m.samples.suffix(60).map(\.mem), maxV: 1)
-                card("磁盘", "internaldrive", MenuBarRenderer.diskText(m.disk.available), sub: "可用 · 共 \(Fmt.bytes(m.disk.total))",
+                card(L("磁盘", "Disk"), "internaldrive", MenuBarRenderer.diskText(m.disk.available), sub: L("可用 · 共 \(Fmt.bytes(m.disk.total))", "free · of \(Fmt.bytes(m.disk.total))"),
                      color: Palette.disk, ring: m.disk.usedFraction)
-                card("网络", "network", MenuMetric.short(m.netIn) + "/s", sub: "下载 · 上传 \(Fmt.rate(m.netOut))", color: Palette.netIn,
+                card(L("网络", "Network"), "network", MenuMetric.short(m.netIn) + "/s", sub: L("下载 · 上传 \(Fmt.rate(m.netOut))", "down · up \(Fmt.rate(m.netOut))"), color: Palette.netIn,
                      spark: m.samples.suffix(60).map(\.netIn), maxV: nil)
             }
             HStack(spacing: 8) {
@@ -187,7 +187,7 @@ struct CardsPopover: View {
                 pill("clock", SystemInfo.uptimeText())
             }
             VStack(spacing: 8) {
-                sectionTitle("占用最高")
+                sectionTitle(L("占用最高", "Top apps"))
                 TopApps(count: 3)
             }
             PopoverFooter()
@@ -248,9 +248,9 @@ struct ChartPopover: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     big("CPU", Fmt.pct(m.cpu.total), Palette.cpu)
-                    big("内存", Fmt.pct(m.memory.usedFraction), Palette.mem)
+                    big(L("内存", "Memory"), Fmt.pct(m.memory.usedFraction), Palette.mem)
                     Spacer()
-                    Text("最近 5 分钟").font(.system(size: 10)).foregroundStyle(.tertiary)
+                    Text(L("最近 5 分钟", "Last 5 minutes")).font(.system(size: 10)).foregroundStyle(.tertiary)
                 }
                 Chart {
                     ForEach(m.samples) { s in
@@ -259,7 +259,7 @@ struct ChartPopover: View {
                             .interpolationMethod(.catmullRom)
                         LineMark(x: .value("t", s.t), y: .value("CPU", s.cpu * 100), series: .value("k", "CPU"))
                             .foregroundStyle(Palette.cpu).interpolationMethod(.catmullRom)
-                        LineMark(x: .value("t", s.t), y: .value("内存", s.mem * 100), series: .value("k", "内存"))
+                        LineMark(x: .value("t", s.t), y: .value(L("内存", "Memory"), s.mem * 100), series: .value("k", L("内存", "Memory")))
                             .foregroundStyle(Palette.mem).lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                     }
                 }
@@ -272,17 +272,17 @@ struct ChartPopover: View {
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.045)))
 
             HStack(spacing: 0) {
-                stat("磁盘剩余", MenuBarRenderer.diskText(m.disk.available))
+                stat(L("磁盘剩余", "Disk free"), MenuBarRenderer.diskText(m.disk.available))
                 Divider().frame(height: 26)
-                stat("下载", MenuMetric.short(m.netIn) + "/s")
+                stat(L("下载", "Down"), MenuMetric.short(m.netIn) + "/s")
                 Divider().frame(height: 26)
-                stat("上传", MenuMetric.short(m.netOut) + "/s")
+                stat(L("上传", "Up"), MenuMetric.short(m.netOut) + "/s")
                 Divider().frame(height: 26)
-                stat("温度", m.temperature.map { String(format: "%.0f°", $0) } ?? "—")
+                stat(L("温度", "Temp"), m.temperature.map { String(format: "%.0f°", $0) } ?? "—")
             }
 
             VStack(spacing: 8) {
-                sectionTitle("占用最高")
+                sectionTitle(L("占用最高", "Top apps"))
                 TopApps(count: 2)
             }
             .padding(12)

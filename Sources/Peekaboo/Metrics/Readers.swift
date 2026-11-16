@@ -51,9 +51,9 @@ final class CPUReader {
 
     static func shortName(_ level: String) -> String {
         switch level.lowercased() {
-        case "super": return "超大核"
-        case "performance": return "性能核"
-        case "efficiency": return "能效核"
+        case "super": return L("超大核", "Super")
+        case "performance": return L("性能核", "Performance")
+        case "efficiency": return L("能效核", "Efficiency")
         default: return level
         }
     }
@@ -122,9 +122,9 @@ struct MemoryReading {
     var usedFraction: Double { total > 0 ? Double(used) / Double(total) : 0 }
     var pressureText: String {
         switch pressureLevel {
-        case 4: return "紧张"
-        case 2: return "偏高"
-        default: return "正常"
+        case 4: return L("紧张", "Critical")
+        case 2: return L("偏高", "Elevated")
+        default: return L("正常", "Normal")
         }
     }
 }
@@ -383,8 +383,8 @@ enum SystemInfo {
     static func uptimeText() -> String {
         let s = Int(uptime)
         let d = s / 86400, h = (s % 86400) / 3600, m = (s % 3600) / 60
-        if d > 0 { return "\(d) 天 \(h) 小时" }
-        if h > 0 { return "\(h) 小时 \(m) 分" }
-        return "\(m) 分钟"
+        if d > 0 { return L("\(d) 天 \(h) 小时", "\(d)d \(h)h") }
+        if h > 0 { return L("\(h) 小时 \(m) 分", "\(h)h \(m)m") }
+        return L("\(m) 分钟", "\(m) min")
     }
 }

@@ -55,6 +55,18 @@ jobs:
           $err = Join-Path $env:LOCALAPPDATA "Peekaboo\errors.log"
           if (Test-Path $err) { Get-Content $err; throw "unhandled UI errors" }
 
+      - name: Page screenshots (dark mode)
+        run: |
+          $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+          New-Item -Path $key -Force | Out-Null
+          Set-ItemProperty -Path $key -Name AppsUseLightTheme -Value 0 -Type DWord
+          Set-ItemProperty -Path $key -Name SystemUsesLightTheme -Value 0 -Type DWord
+          New-Item -ItemType Directory -Force shots-dark | Out-Null
+          $p = Start-Process -FilePath .\out\Peekaboo.exe -ArgumentList "--snapshot", "$PWD\shots-dark" -PassThru
+          if (-not $p.WaitForExit(600000)) { $p.Kill(); throw "dark snapshot timed out" }
+          Set-ItemProperty -Path $key -Name AppsUseLightTheme -Value 1 -Type DWord
+          Get-ChildItem shots-dark
+
       - uses: actions/upload-artifact@v4
         with:
           name: Peekaboo-win-x64
@@ -68,4 +80,5 @@ jobs:
             windows/Peekaboo/selftest.txt
             windows/Peekaboo/icons.png
             windows/Peekaboo/shots/
+            windows/Peekaboo/shots-dark/
             windows/Peekaboo/shot/

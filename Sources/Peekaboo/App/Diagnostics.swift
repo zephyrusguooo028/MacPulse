@@ -119,6 +119,8 @@ enum Snapshot {
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("8-screenshot.png"))
 
+            app.tab = .clipboard; try? await Task.sleep(for: .seconds(1)); saveWindow(to: dir.appendingPathComponent("10-clipboard.png"))
+
             app.tab = .battery
             try? await Task.sleep(for: .seconds(1.5))
             saveWindow(to: dir.appendingPathComponent("11-battery.png"))

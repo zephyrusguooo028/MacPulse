@@ -16,14 +16,14 @@ public sealed class OverviewPage : PageView
     {
         var m = SystemMonitor.Shared;
         var tiles = new UniformGrid4();
-        tiles.Add(Tile("CPU", "", H(14, Ring(m.Cpu.Total, Theme.Load(m.Cpu.Total), Fmt.Pct(m.Cpu.Total), 62, 6),
+        tiles.Add(Tile("CPU", "", H(14, Ring(m.Cpu.Total, Theme.Load(m.Cpu.Total), Fmt.Pct(m.Cpu.Total), 52, 5),
             Lines(("用户", Fmt.Pct(m.Cpu.User, 1)), ("系统", Fmt.Pct(m.Cpu.System, 1)), ("核心", $"{m.Cpu.PerCore.Length} 个")))));
         var memC = m.Memory.PressureLevel >= 4 ? Theme.DangerC : m.Memory.PressureLevel >= 2 ? Theme.WarnC : Theme.MemC;
-        tiles.Add(Tile("内存", "", H(14, Ring(m.Memory.UsedFraction, memC, Fmt.Pct(m.Memory.UsedFraction), 62, 6),
+        tiles.Add(Tile("内存", "", H(14, Ring(m.Memory.UsedFraction, memC, Fmt.Pct(m.Memory.UsedFraction), 52, 5),
             Lines(("已用", Fmt.Bytes(m.Memory.Used)), ("压力", m.Memory.PressureText), ("提交", Fmt.Bytes(m.Memory.CommitUsed))))));
         var diskLink = T("分析磁盘 →", 12.5, color: Theme.AccentBrush); diskLink.Cursor = System.Windows.Input.Cursors.Hand;
         diskLink.MouseLeftButtonUp += (_, _) => MainWindow.Instance?.Navigate(Page.Disk);
-        tiles.Add(Tile("磁盘 " + m.Disk.Name, "", H(14, Ring(m.Disk.UsedFraction, m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC, Fmt.Pct(m.Disk.UsedFraction), 62, 6, caption: "已用"),
+        tiles.Add(Tile("磁盘 " + m.Disk.Name, "", H(14, Ring(m.Disk.UsedFraction, m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC, Fmt.Pct(m.Disk.UsedFraction), 52, 5, caption: "已用"),
             V(6, Lines(("可用", Fmt.Bytes(m.Disk.Free)), ("已用", Fmt.Bytes(m.Disk.Used))), diskLink))));
         var recent = m.Samples.TakeLast(60).ToList();
         double netMax = Math.Max(1, recent.Select(s => Math.Max(s.NetIn, s.NetOut)).DefaultIfEmpty(1).Max());
@@ -113,8 +113,8 @@ public sealed class OverviewPage : PageView
         for (int i = 0; i < rows.Length; i++)
         {
             g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var l = T(rows[i].label, 12.5, color: Theme.Secondary); l.Margin = new Thickness(0, i == 0 ? 0 : 6, 8, 0);
-            var v = T(rows[i].value, 12.5, FontWeights.Medium); v.Margin = new Thickness(0, i == 0 ? 0 : 6, 0, 0); v.HorizontalAlignment = HorizontalAlignment.Right;
+            var l = T(rows[i].label, 11.5, color: Theme.Secondary); l.Margin = new Thickness(0, i == 0 ? 0 : 5, 6, 0);
+            var v = T(rows[i].value, 11.5, FontWeights.Medium); v.Margin = new Thickness(0, i == 0 ? 0 : 5, 0, 0); v.HorizontalAlignment = HorizontalAlignment.Right;
             Grid.SetRow(l, i); Grid.SetRow(v, i); Grid.SetColumn(v, 1);
             g.Children.Add(l); g.Children.Add(v);
         }
@@ -126,7 +126,7 @@ public sealed class OverviewPage : PageView
     {
         var d = new DockPanel();
         DockPanel.SetDock(ring, Dock.Left);
-        ring.Margin = new Thickness(0, 0, 10, 0);
+        ring.Margin = new Thickness(0, 0, 8, 0);
         details.VerticalAlignment = VerticalAlignment.Center;
         d.Children.Add(ring); d.Children.Add(details);
         return d;

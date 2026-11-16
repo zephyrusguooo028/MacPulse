@@ -26,6 +26,7 @@ struct MainView: View {
                 case .projects: ProjectsView()
                 case .processes: ProcessesView()
                 case .cleanup: CleanupView()
+                case .typing: TypingView()
                 case .settings: SettingsView()
                 }
             }

@@ -77,7 +77,7 @@ public sealed class MainWindow : Window
         var (title, glyph) = p switch
         {
             Page.Overview => ("概览", ""), Page.Disk => ("磁盘", ""), Page.Projects => ("项目", ""),
-            Page.Processes => ("进程", ""), Page.Cleanup => ("清理", ""), _ => ("设置", ""),
+            Page.Processes => ("进程", ""), Page.Cleanup => ("清理", ""), Page.Typing => ("打字", "\uE765"), _ => ("设置", ""),
         };
         var b = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(10, 8, 10, 8), Cursor = Cursors.Hand, Background = Brushes.Transparent,
                              Child = H(10, Glyph(glyph, 15), T(title, 13.5)) };
@@ -101,6 +101,7 @@ public sealed class MainWindow : Window
             Page.Projects => new ProjectsPage(),
             Page.Processes => new ProcessesPage(),
             Page.Cleanup => new CleanupPage(),
+            Page.Typing => new TypingPage(),
             _ => new SettingsPage(),
         };
         _page.Margin = new Thickness(24, 20, 24, 24);

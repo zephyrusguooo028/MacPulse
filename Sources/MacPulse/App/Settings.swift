@@ -30,6 +30,8 @@ final class AppSettings {
     var menuMetrics: [MenuMetric] { didSet { d.set(menuMetrics.map(\.rawValue), forKey: "menuMetrics") } }
     var iconTint: Bool { didSet { d.set(iconTint, forKey: "iconTint") } }
     var themeColor: ThemeColor { didSet { d.set(themeColor.rawValue, forKey: "themeColor") } }
+    var typingEnabled: Bool { didSet { d.set(typingEnabled, forKey: "typingEnabled") } }
+    var typingGoal: Int { didSet { d.set(typingGoal, forKey: "typingGoal") } }
     var popoverStyle: PopoverStyle { didSet { d.set(popoverStyle.rawValue, forKey: "popoverStyle") } }
     var sampleInterval: Double { didSet { d.set(sampleInterval, forKey: "sampleInterval") } }
     var showTemperature: Bool { didSet { d.set(showTemperature, forKey: "showTemperature") } }
@@ -58,6 +60,8 @@ final class AppSettings {
         menuMetrics = (d.stringArray(forKey: "menuMetrics") ?? ["cpu", "memory"]).compactMap(MenuMetric.init(rawValue:))
         iconTint = d.object(forKey: "iconTint") as? Bool ?? false
         themeColor = ThemeColor(rawValue: d.string(forKey: "themeColor") ?? "") ?? .system
+        typingEnabled = d.object(forKey: "typingEnabled") as? Bool ?? false
+        typingGoal = d.object(forKey: "typingGoal") as? Int ?? 10000
         popoverStyle = PopoverStyle(rawValue: d.string(forKey: "popoverStyle") ?? "") ?? .compact
         sampleInterval = d.object(forKey: "sampleInterval") as? Double ?? 2
         showTemperature = d.object(forKey: "showTemperature") as? Bool ?? true

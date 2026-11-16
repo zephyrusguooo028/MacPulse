@@ -140,9 +140,12 @@ public sealed class TrayController : IDisposable
             TrayMetric.Network => (Fmt.Short(m.NetIn).Replace("K", "k"), C(Theme.NetInC), $"下载 {Fmt.Rate(m.NetIn)} · 上传 {Fmt.Rate(m.NetOut)}"),
             TrayMetric.Gpu => (m.Gpu is { } g ? Math.Min(99, (int)Math.Round(g * 100)).ToString() : "–", C(Theme.WarnC), $"GPU {(m.Gpu is { } g2 ? Fmt.Pct(g2) : "读不到")}"),
             TrayMetric.Battery => (m.Battery is { } b ? Math.Min(99, (int)Math.Round(b.Percent * 100)).ToString() : "–", SD.Color.FromArgb(120, 200, 80), m.Battery is { } b2 ? $"电池 {Fmt.Pct(b2.Percent)}{(b2.Charging ? " 充电中" : "")}" : "没有电池"),
+            TrayMetric.Typing => (TypingMonitor.Shared.Running ? Compact(TypingMonitor.Shared.Today.Total) : "–", C(Theme.MemC), $"今天打字 {TypingMonitor.Shared.Today.Total} 次"),
             _ => ("", C(Theme.CpuC), "CPU 走势"),
         };
     }
+
+    static string Compact(int n) => n < 1000 ? n.ToString() : n < 10000 ? $"{n / 1000.0:0.#}k" : $"{n / 1000}k";
 
     Page _pendingBalloonTab = Page.Overview;
 

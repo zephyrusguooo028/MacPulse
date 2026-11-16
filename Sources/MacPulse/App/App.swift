@@ -18,7 +18,7 @@ enum Entry {
 }
 
 enum MainTab: String, CaseIterable, Identifiable {
-    case overview, disk, projects, processes, cleanup, settings
+    case overview, disk, projects, processes, cleanup, typing, settings
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -27,6 +27,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .projects: return "项目"
         case .processes: return "进程"
         case .cleanup: return "清理"
+        case .typing: return "打字"
         case .settings: return "设置"
         }
     }
@@ -37,6 +38,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .projects: return "folder.badge.gearshape"
         case .processes: return "list.bullet.rectangle"
         case .cleanup: return "sparkles"
+        case .typing: return "keyboard"
         case .settings: return "gearshape"
         }
     }
@@ -77,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             m.start()
             IconAnimator.shared.start()
             StatusItemController.shared.install()
+            TypingMonitor.shared.apply()
             AlertManager.shared.setup()
             if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
                 Snapshot.run(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
@@ -92,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ n: Notification) {
-        MainActor.assumeIsolated { SystemMonitor.shared.shutdown() }
+        MainActor.assumeIsolated { SystemMonitor.shared.shutdown(); TypingMonitor.shared.save() }
     }
 }
 

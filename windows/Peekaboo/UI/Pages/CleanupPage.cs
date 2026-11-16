@@ -55,8 +55,9 @@ public sealed class CleanupPage : PageView
             b.Padding = new Thickness(10, 3, 10, 3);
             mode.Children.Add(b);
         }
-        var note = T(_permanent ? "直接删除不能恢复，空间马上释放。" : "移到回收站可以恢复，但要清空回收站后空间才真正释放。", 11.5,
+        TextBlock note = T(_permanent ? "直接删除不能恢复，空间马上释放。" : "移到回收站可以恢复，但要清空回收站后空间才真正释放。", 11.5,
                      color: _permanent ? Theme.B(Theme.DangerC) : Theme.Secondary);
+        note.TextWrapping = TextWrapping.Wrap; note.TextTrimming = TextTrimming.None;
         var action = Card("已选择", "", V(10,
             Row(H(8, T(Fmt.Bytes(M.SelectedSize), 32, FontWeights.Bold), T($"{M.SelectedItems.Count()} 项", 13, color: Theme.Secondary)), go),
             mode,

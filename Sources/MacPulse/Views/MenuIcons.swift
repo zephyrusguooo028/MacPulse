@@ -51,7 +51,7 @@ enum MenuIcon: String, CaseIterable, Identifiable {
 
 /// Metrics the user can tick to show next to the icon.
 enum MenuMetric: String, CaseIterable, Identifiable {
-    case cpu, cpuGraph, memory, disk, network, temperature, gpu, battery
+    case cpu, cpuGraph, memory, disk, network, temperature, gpu, battery, typing
     var id: String { rawValue }
 
     var title: String {
@@ -64,6 +64,7 @@ enum MenuMetric: String, CaseIterable, Identifiable {
         case .temperature: return "温度"
         case .gpu: return "GPU 占用"
         case .battery: return "电池"
+        case .typing: return "今日打字"
         }
     }
 
@@ -78,6 +79,7 @@ enum MenuMetric: String, CaseIterable, Identifiable {
         case .temperature: return m.temperature.map { String(format: "%.0f°", $0) }
         case .gpu: return m.gpu.map { "GPU \(Int(($0 * 100).rounded()))%" }
         case .battery: return m.battery.map { "\($0.charging ? "⚡" : "电")\(Int(($0.percent * 100).rounded()))%" }
+        case .typing: return TypingMonitor.shared.running ? "⌨\(TypingMonitor.shared.today.total)" : nil
         }
     }
 

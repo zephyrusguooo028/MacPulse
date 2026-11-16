@@ -24,10 +24,11 @@ public static class Program
             m.Ticked += Alerts.Check;
             m.Start();
             TrayController.Shared.Install();
+            TypingMonitor.Shared.Apply();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };
-        app.Exit += (_, _) => { SystemMonitor.Shared.Shutdown(); TrayController.Shared.Dispose(); };
+        app.Exit += (_, _) => { SystemMonitor.Shared.Shutdown(); TypingMonitor.Shared.Stop(); TrayController.Shared.Dispose(); };
         app.DispatcherUnhandledException += (_, e) =>
         {
             try { File.AppendAllText(Path.Combine(Paths.Support, "errors.log"), $"{DateTime.Now:u} {e.Exception}\n\n"); } catch { }
@@ -128,11 +129,31 @@ static class Snapshot
         await Task.Delay(1000);
         Save(MainWindow.Instance!, Path.Combine(dir, "5-cleanup.png"));
 
+        // Exercise the keyboard hook: simulate keys and check they were counted.
+        Settings.Shared.TypingEnabled = true;
+        TypingMonitor.Shared.Apply();
+        MainWindow.Instance!.Navigate(Page.Typing);
+        int before = TypingMonitor.Shared.Today.Total;
+        foreach (var ch in "peekaboo is counting keys only 1234567890")
+        {
+            byte vk = ch == ' ' ? (byte)0x20 : (byte)char.ToUpperInvariant(ch);
+            keybd_event(vk, 0, 0, UIntPtr.Zero);
+            await Task.Delay(15);
+            keybd_event(vk, 0, 2, UIntPtr.Zero);
+            await Task.Delay(15);
+        }
+        await Task.Delay(1500);
+        File.WriteAllText(Path.Combine(dir, "typing.txt"), $"hook running={TypingMonitor.Shared.Running} counted={TypingMonitor.Shared.Today.Total - before} of 41");
+        Save(MainWindow.Instance!, Path.Combine(dir, "7-typing.png"));
+
         MainWindow.Instance!.Navigate(Page.Settings);
         await Task.Delay(1500);
         Save(MainWindow.Instance!, Path.Combine(dir, "6-settings.png"));
         Application.Current.Shutdown();
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
 
     static void Save(Window w, string file)
     {

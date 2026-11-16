@@ -9,7 +9,7 @@ public enum ThemeChoice { System, Mono, Load, Pink, Mint, Purple, Orange, Blue }
 public enum TrayIcon { None, Slime, Ghost, Chick, Whale, Rocket, Heart, Pulse, Fan, Bars }
 
 /// Metrics the user can tick. Each numeric one gets its own small tray icon with the value.
-public enum TrayMetric { Cpu, CpuGraph, Memory, Disk, Network, Gpu, Battery }
+public enum TrayMetric { Cpu, CpuGraph, Memory, Disk, Network, Gpu, Battery, Typing }
 
 public sealed class Settings
 {
@@ -18,6 +18,8 @@ public sealed class Settings
     public bool IconTint { get; set; }
     public ThemeChoice Theme { get; set; } = ThemeChoice.System;
     public double SampleInterval { get; set; } = 2;
+    public bool TypingEnabled { get; set; }
+    public int TypingGoal { get; set; } = 10000;
 
     public List<string> ProjectRoots { get; set; } = new() { "~\\Documents", "~\\Desktop", "~\\source\\repos", "~\\Projects", "~\\code", "~\\dev" };
     public List<string> Whitelist { get; set; } = new();

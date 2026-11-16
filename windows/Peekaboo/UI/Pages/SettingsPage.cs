@@ -93,7 +93,7 @@ public sealed class SettingsPage : PageView
         var titles = new Dictionary<TrayMetric, string>
         {
             [TrayMetric.Cpu] = "CPU 占用", [TrayMetric.CpuGraph] = "CPU 走势图", [TrayMetric.Memory] = "内存占用", [TrayMetric.Disk] = "磁盘剩余（GB）",
-            [TrayMetric.Network] = "下载速度", [TrayMetric.Gpu] = "GPU 占用", [TrayMetric.Battery] = "电池",
+            [TrayMetric.Network] = "下载速度", [TrayMetric.Gpu] = "GPU 占用", [TrayMetric.Battery] = "电池", [TrayMetric.Typing] = "今日打字",
         };
         foreach (var m in Enum.GetValues<TrayMetric>())
         {

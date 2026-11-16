@@ -154,6 +154,14 @@ static class Snapshot
         File.WriteAllText(Path.Combine(dir, "typing.txt"), $"hook running={TypingMonitor.Shared.Running} counted={TypingMonitor.Shared.Today.Total - before} of 41");
         Save(MainWindow.Instance!, Path.Combine(dir, "7-typing.png"));
 
+        MainWindow.Instance!.Navigate(Page.Battery);
+        await Task.Delay(2500);
+        Save(MainWindow.Instance!, Path.Combine(dir, "11-battery.png"));
+
+        MainWindow.Instance!.Navigate(Page.Network);
+        await Task.Delay(4000);
+        Save(MainWindow.Instance!, Path.Combine(dir, "12-network.png"));
+
         MainWindow.Instance!.Navigate(Page.Settings);
         await Task.Delay(1500);
         Save(MainWindow.Instance!, Path.Combine(dir, "6-settings.png"));

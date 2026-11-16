@@ -14,7 +14,7 @@ enum ShotTool: String, CaseIterable, Identifiable {
         case .rect: return "rectangle"
         case .arrow: return "arrow.up.right"
         case .pen: return "scribble"
-        case .text: return "textformat"
+        case .text: return "character.cursor.ibeam"
         case .mosaic: return "square.grid.3x3.fill"
         }
     }

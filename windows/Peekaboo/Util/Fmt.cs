@@ -2,6 +2,19 @@ using System.Globalization;
 
 namespace Peekaboo;
 
+/// Picks the Chinese or English text for the current language setting.
+public static class Loc
+{
+    public static bool English => Settings.Shared.Language switch
+    {
+        AppLanguage.Zh => false,
+        AppLanguage.En => true,
+        _ => !CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase),
+    };
+
+    public static string L(string zh, string en) => English ? en : zh;
+}
+
 internal static class Fmt
 {
     public static string Bytes(double v)

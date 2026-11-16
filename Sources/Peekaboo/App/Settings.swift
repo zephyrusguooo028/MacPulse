@@ -2,6 +2,34 @@ import Foundation
 import Observation
 import ServiceManagement
 
+/// Interface language.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system, zh, en
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: return "跟随系统 / System"
+        case .zh: return "简体中文"
+        case .en: return "English"
+        }
+    }
+}
+
+/// Picks the Chinese or English text for the current language setting.
+/// Reading the setting inside a SwiftUI body makes the view refresh when it changes.
+func L(_ zh: String, _ en: String) -> String { Loc.isEnglish ? en : zh }
+
+enum Loc {
+    static var isEnglish: Bool {
+        switch AppSettings.shared.language {
+        case .zh: return false
+        case .en: return true
+        case .system: return !(Locale.preferredLanguages.first ?? "en").hasPrefix("zh")
+        }
+    }
+    static var locale: Locale { Locale(identifier: isEnglish ? "en_US" : "zh_CN") }
+}
+
 /// The highlight colour used for the animated icon, selections and buttons.
 enum ThemeColor: String, CaseIterable, Identifiable {
     case system, mono, load, pink, mint, purple, orange, blue
@@ -30,6 +58,7 @@ final class AppSettings {
     var menuMetrics: [MenuMetric] { didSet { d.set(menuMetrics.map(\.rawValue), forKey: "menuMetrics") } }
     var iconTint: Bool { didSet { d.set(iconTint, forKey: "iconTint") } }
     var themeColor: ThemeColor { didSet { d.set(themeColor.rawValue, forKey: "themeColor") } }
+    var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language") } }
     var typingEnabled: Bool { didSet { d.set(typingEnabled, forKey: "typingEnabled") } }
     var typingGoal: Int { didSet { d.set(typingGoal, forKey: "typingGoal") } }
     /// nil = no shortcut.
@@ -63,6 +92,7 @@ final class AppSettings {
         menuMetrics = (d.stringArray(forKey: "menuMetrics") ?? ["cpu", "memory"]).compactMap(MenuMetric.init(rawValue:))
         iconTint = d.object(forKey: "iconTint") as? Bool ?? false
         themeColor = ThemeColor(rawValue: d.string(forKey: "themeColor") ?? "") ?? .system
+        language = AppLanguage(rawValue: d.string(forKey: "language") ?? "") ?? .system
         typingEnabled = d.object(forKey: "typingEnabled") as? Bool ?? false
         typingGoal = d.object(forKey: "typingGoal") as? Int ?? 10000
         if let data = d.data(forKey: "shotHotkeySpec") {

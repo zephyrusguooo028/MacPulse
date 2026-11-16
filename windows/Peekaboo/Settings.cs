@@ -4,6 +4,8 @@ using Microsoft.Win32;
 
 namespace Peekaboo;
 
+public enum AppLanguage { System, Zh, En }
+
 public enum ThemeChoice { System, Mono, Load, Pink, Mint, Purple, Orange, Blue }
 
 public enum TrayIcon { None, Slime, Ghost, Chick, Whale, Rocket, Heart, Pulse, Fan, Bars }
@@ -17,6 +19,7 @@ public sealed class Settings
     public List<TrayMetric> Metrics { get; set; } = new() { TrayMetric.Cpu, TrayMetric.Memory };
     public bool IconTint { get; set; }
     public ThemeChoice Theme { get; set; } = ThemeChoice.System;
+    public AppLanguage Language { get; set; } = AppLanguage.System;
     public double SampleInterval { get; set; } = 2;
     public bool TypingEnabled { get; set; }
     public int TypingGoal { get; set; } = 10000;

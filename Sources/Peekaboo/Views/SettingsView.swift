@@ -12,6 +12,14 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 PageHeader(title: "设置", subtitle: "Peekaboo 1.0") { EmptyView() }
 
+                Card(L("语言", "Language"), symbol: "globe") {
+                    Picker(L("界面语言", "Interface language"), selection: $s.language) {
+                        ForEach(AppLanguage.allCases) { Text($0.title).tag($0) }
+                    }
+                    .frame(maxWidth: 360)
+                    .onChange(of: s.language) { _, _ in StatusItemController.shared.refresh() }
+                }
+
                 Card("菜单栏", symbol: "menubar.rectangle") {
                     Picker("点开后的面板", selection: $s.popoverStyle) {
                         ForEach(PopoverStyle.allCases) { Text($0.title).tag($0) }

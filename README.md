@@ -17,7 +17,23 @@ A native macOS menu bar app: system monitor, disk analyzer and cleaner, written 
 - **进程**：按应用汇总（把同一个应用的多个子进程合并成一行），可以退出或强制退出。
 - **清理**：开发缓存（npm / pip / Go / Cargo …）、项目产物、应用缓存、日志、下载里的旧文件、大文件。默认移到废纸篓；只动用户目录，受保护目录和白名单永远跳过。
 - **提醒**：磁盘不足、内存压力紧张、CPU 持续高负载、每周可清理空间提示。
+- **打字统计**：每天按键数、每小时分布、键盘热力图、最常用的键和应用、每日目标。**只计数，从不记录打了什么**，默认关闭。
+- **截图**：自定义快捷键（默认 ⌥⇧A / Alt+Shift+A），自动识别窗口，矩形 / 箭头 / 画笔 / 文字 / 马赛克标注，复制、保存或贴在屏幕上（可缩放、调透明度）。
+- **主题色**：跟随系统、黑白、跟随负载，或樱花粉、薄荷绿等。
 - **开机自启**，不联网，不收集任何数据。
+
+### Windows 版：Peekaboo
+
+`windows/Peekaboo` 是同一套功能的 Windows 版（C# / WPF，单文件 exe）。托盘里可以放动画图标和多个数值小图标（Windows 托盘不能显示文字），其余功能与 macOS 版一致。构建：
+
+```bash
+cd windows/Peekaboo
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
+```
+
+每次推送都会由 GitHub Actions 在 Windows 上编译、跑自检（读数、扫描、一次真实删除、模拟按键统计）、截图每个页面，产物可以在 Actions 里下载。
+
+> 打字统计在 Windows 上使用全局键盘钩子，个别杀毒软件可能会提示风险；它只计数，代码全部开源。
 
 Menu bar icons that animate faster as CPU load rises, user-selectable metrics, three popover layouts, a 24-hour history, a treemap disk explorer, per-project dependency/build-artifact sizes, per-app process grouping, and a cleaner that moves things to the Trash by default and never touches anything outside your home folder. No network access, no telemetry.
 

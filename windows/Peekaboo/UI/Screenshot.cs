@@ -12,7 +12,52 @@ using static Peekaboo.UIX;
 
 namespace Peekaboo;
 
-public enum ShotHotkey { AltShiftA, CtrlAltA, F1, None }
+/// A user-recorded shortcut: virtual-key code + RegisterHotKey modifier mask.
+public sealed class HotkeyData
+{
+    public int Vk { get; set; }
+    public uint Mods { get; set; }
+    public string Label { get; set; } = "";
+    public const uint ALT = 1, CTRL = 2, SHIFT = 4, WIN = 8;
+    public static HotkeyData Default => new() { Vk = 0x41, Mods = ALT | SHIFT, Label = "A" };
+
+    public string Title
+    {
+        get
+        {
+            var parts = new List<string>();
+            if ((Mods & CTRL) != 0) parts.Add("Ctrl");
+            if ((Mods & ALT) != 0) parts.Add("Alt");
+            if ((Mods & SHIFT) != 0) parts.Add("Shift");
+            if ((Mods & WIN) != 0) parts.Add("Win");
+            parts.Add(Label);
+            return string.Join(" + ", parts);
+        }
+    }
+
+    public bool Same(HotkeyData? o) => o is not null && o.Vk == Vk && o.Mods == Mods;
+
+    /// From a WPF key event. Null when a plain key without Ctrl/Alt/Win (except F-keys).
+    public static HotkeyData? From(Key key, ModifierKeys mods)
+    {
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin or Key.System) return null;
+        uint m = 0;
+        if (mods.HasFlag(ModifierKeys.Control)) m |= CTRL;
+        if (mods.HasFlag(ModifierKeys.Alt)) m |= ALT;
+        if (mods.HasFlag(ModifierKeys.Shift)) m |= SHIFT;
+        if (mods.HasFlag(ModifierKeys.Windows)) m |= WIN;
+        bool isF = key >= Key.F1 && key <= Key.F24;
+        if (!isF && (m & (CTRL | ALT | WIN)) == 0) return null;
+        string label = key switch
+        {
+            >= Key.A and <= Key.Z => key.ToString(),
+            >= Key.D0 and <= Key.D9 => ((int)(key - Key.D0)).ToString(),
+            Key.Space => "Space", Key.Snapshot => "PrintScreen", Key.Return => "Enter",
+            _ => key.ToString(),
+        };
+        return new HotkeyData { Vk = KeyInterop.VirtualKeyFromKey(key), Mods = m, Label = label };
+    }
+}
 public enum ShotTool { Rect, Arrow, Pen, Text, Mosaic }
 
 public sealed class ShotMark
@@ -35,12 +80,7 @@ public static class GlobalHotkey
     [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    public static string Title(ShotHotkey k) => k switch
-    {
-        ShotHotkey.AltShiftA => "Alt + Shift + A", ShotHotkey.CtrlAltA => "Ctrl + Alt + A", ShotHotkey.F1 => "F1", _ => "不使用快捷键",
-    };
-
-    public static bool Apply(ShotHotkey key, Action action)
+    public static bool Apply(HotkeyData? key, Action action)
     {
         _action = action;
         if (_src is null)
@@ -53,14 +93,8 @@ public static class GlobalHotkey
             });
         }
         UnregisterHotKey(_src.Handle, Id);
-        const uint ALT = 1, CTRL = 2, SHIFT = 4, NOREPEAT = 0x4000;
-        return key switch
-        {
-            ShotHotkey.AltShiftA => RegisterHotKey(_src.Handle, Id, ALT | SHIFT | NOREPEAT, 0x41),
-            ShotHotkey.CtrlAltA => RegisterHotKey(_src.Handle, Id, CTRL | ALT | NOREPEAT, 0x41),
-            ShotHotkey.F1 => RegisterHotKey(_src.Handle, Id, NOREPEAT, 0x70),
-            _ => true,
-        };
+        if (key is null) return true;
+        return RegisterHotKey(_src.Handle, Id, key.Mods | 0x4000 /* MOD_NOREPEAT */, (uint)key.Vk);
     }
 }
 
@@ -74,7 +108,9 @@ public static class Screenshot
         Color.FromRgb(242, 64, 64), Color.FromRgb(255, 199, 26), Color.FromRgb(51, 199, 102), Color.FromRgb(51, 140, 255), System.Windows.Media.Colors.White, System.Windows.Media.Colors.Black,
     };
 
-    public static void ApplyHotkey() => GlobalHotkey.Apply(Settings.Shared.ShotHotkey, () => Start());
+    public static bool HotkeyOK { get; private set; } = true;
+    public static void ApplyHotkey() => HotkeyOK = GlobalHotkey.Apply(Settings.Shared.ShotKey, () => Start());
+    public static void SuspendHotkey() => GlobalHotkey.Apply(null, () => { });
 
     public static async void Start(int delayMs = 0)
     {
@@ -204,9 +240,11 @@ public sealed class ShotOverlay : Window
         double f = 1.0 / 12;
         var small = new TransformedBitmap(src, new ScaleTransform(f, f));
         var rtb = new RenderTargetBitmap(src.PixelWidth, src.PixelHeight, 96, 96, PixelFormats.Pbgra32);
+        var group = new DrawingGroup();
+        RenderOptions.SetBitmapScalingMode(group, BitmapScalingMode.NearestNeighbor);
+        using (var gc = group.Open()) gc.DrawImage(small, new Rect(0, 0, src.PixelWidth, src.PixelHeight));
         var dv = new DrawingVisual();
-        RenderOptions.SetBitmapScalingMode(dv, BitmapScalingMode.NearestNeighbor);
-        using (var c = dv.RenderOpen()) c.DrawImage(small, new Rect(0, 0, src.PixelWidth, src.PixelHeight));
+        using (var c = dv.RenderOpen()) c.DrawDrawing(group);
         rtb.Render(dv);
         rtb.Freeze();
         return rtb;

@@ -32,7 +32,8 @@ final class AppSettings {
     var themeColor: ThemeColor { didSet { d.set(themeColor.rawValue, forKey: "themeColor") } }
     var typingEnabled: Bool { didSet { d.set(typingEnabled, forKey: "typingEnabled") } }
     var typingGoal: Int { didSet { d.set(typingGoal, forKey: "typingGoal") } }
-    var shotHotkey: ShotHotkey { didSet { d.set(shotHotkey.rawValue, forKey: "shotHotkey") } }
+    /// nil = no shortcut.
+    var shotHotkey: HotkeySpec? { didSet { d.set(try? JSONEncoder().encode(shotHotkey), forKey: "shotHotkeySpec") } }
     var shotFolder: String { didSet { d.set(shotFolder, forKey: "shotFolder") } }
     var popoverStyle: PopoverStyle { didSet { d.set(popoverStyle.rawValue, forKey: "popoverStyle") } }
     var sampleInterval: Double { didSet { d.set(sampleInterval, forKey: "sampleInterval") } }
@@ -64,7 +65,11 @@ final class AppSettings {
         themeColor = ThemeColor(rawValue: d.string(forKey: "themeColor") ?? "") ?? .system
         typingEnabled = d.object(forKey: "typingEnabled") as? Bool ?? false
         typingGoal = d.object(forKey: "typingGoal") as? Int ?? 10000
-        shotHotkey = ShotHotkey(rawValue: d.string(forKey: "shotHotkey") ?? "") ?? .optShiftA
+        if let data = d.data(forKey: "shotHotkeySpec") {
+            shotHotkey = try? JSONDecoder().decode(HotkeySpec?.self, from: data) ?? nil
+        } else {
+            shotHotkey = .defaultShot
+        }
         shotFolder = d.string(forKey: "shotFolder") ?? "~/Desktop"
         popoverStyle = PopoverStyle(rawValue: d.string(forKey: "popoverStyle") ?? "") ?? .compact
         sampleInterval = d.object(forKey: "sampleInterval") as? Double ?? 2

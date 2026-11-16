@@ -177,7 +177,7 @@ public sealed class MainWindow : Window
         long rec = CleanupModel.Shared.All.Where(i => i.Recommended).Sum(i => i.Size);
         SetBadge(Page.Cleanup, rec > 0 ? Fmt.Bytes(rec) : null);
         SetBadge(Page.Typing, TypingMonitor.Shared.Running ? TypingMonitor.Shared.Today.Total.ToString("N0") : null);
-        SetBadge(Page.Screenshot, st.ShotHotkey == ShotHotkey.None ? null : GlobalHotkey.Title(st.ShotHotkey).Replace(" ", ""));
+        SetBadge(Page.Screenshot, st.ShotKey?.Title.Replace(" ", ""));
         SetBadge(Page.Settings, null);
 
         FrameworkElement Meter(string glyph, string title, double v, string value, Color c) =>

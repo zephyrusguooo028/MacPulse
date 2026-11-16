@@ -127,7 +127,7 @@ private struct SidebarRow: View {
             return r > 0 ? (Fmt.bytes(r), false) : nil
         case .typing:
             return TypingMonitor.shared.running ? ("\(TypingMonitor.shared.today.total)", false) : nil
-        case .screenshot: return app.settings.shotHotkey == .none ? nil : (app.settings.shotHotkey.title, false)
+        case .screenshot: return app.settings.shotHotkey.map { ($0.title, false) }
         case .settings: return nil
         }
     }

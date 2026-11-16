@@ -109,6 +109,10 @@ enum Snapshot {
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("7-typing.png"))
 
+            app.tab = .screenshot
+            try? await Task.sleep(for: .seconds(1))
+            saveWindow(to: dir.appendingPathComponent("8-screenshot.png"))
+
             app.tab = .settings
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("6-settings.png"))

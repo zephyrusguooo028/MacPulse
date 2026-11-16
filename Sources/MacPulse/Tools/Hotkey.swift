@@ -10,7 +10,8 @@ final class Hotkeys {
     private var actions: [UInt32: () -> Void] = [:]
     private var installed = false
 
-    func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+    @discardableResult
+    func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) -> Bool {
         installHandler()
         unregister(id: id)
         var ref: EventHotKeyRef?
@@ -18,7 +19,9 @@ final class Hotkeys {
         if RegisterEventHotKey(keyCode, modifiers, hkID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
             refs[id] = ref
             actions[id] = action
+            return true
         }
+        return false
     }
 
     func unregister(id: UInt32) {
@@ -43,23 +46,44 @@ final class Hotkeys {
     }
 }
 
-enum ShotHotkey: String, CaseIterable, Identifiable {
-    case optShiftA, ctrlOptA, cmdShift2, none
-    var id: String { rawValue }
+/// A user-recorded shortcut: Carbon key code + Carbon modifier mask.
+struct HotkeySpec: Codable, Equatable {
+    var keyCode: UInt32
+    var modifiers: UInt32
+    var label: String
+
+    static let defaultShot = HotkeySpec(keyCode: UInt32(kVK_ANSI_A), modifiers: UInt32(optionKey | shiftKey), label: "A")
+
     var title: String {
-        switch self {
-        case .optShiftA: return "⌥⇧A"
-        case .ctrlOptA: return "⌃⌥A"
-        case .cmdShift2: return "⌘⇧2"
-        case .none: return "不使用快捷键"
-        }
+        var s = ""
+        if modifiers & UInt32(controlKey) != 0 { s += "⌃" }
+        if modifiers & UInt32(optionKey) != 0 { s += "⌥" }
+        if modifiers & UInt32(shiftKey) != 0 { s += "⇧" }
+        if modifiers & UInt32(cmdKey) != 0 { s += "⌘" }
+        return s + label
     }
-    var key: (code: UInt32, mods: UInt32)? {
-        switch self {
-        case .optShiftA: return (UInt32(kVK_ANSI_A), UInt32(optionKey | shiftKey))
-        case .ctrlOptA: return (UInt32(kVK_ANSI_A), UInt32(controlKey | optionKey))
-        case .cmdShift2: return (UInt32(kVK_ANSI_2), UInt32(cmdKey | shiftKey))
-        case .none: return nil
-        }
+
+    static let functionKeys: [UInt16: String] = [
+        UInt16(kVK_F1): "F1", UInt16(kVK_F2): "F2", UInt16(kVK_F3): "F3", UInt16(kVK_F4): "F4", UInt16(kVK_F5): "F5", UInt16(kVK_F6): "F6",
+        UInt16(kVK_F7): "F7", UInt16(kVK_F8): "F8", UInt16(kVK_F9): "F9", UInt16(kVK_F10): "F10", UInt16(kVK_F11): "F11", UInt16(kVK_F12): "F12",
+    ]
+    static let namedKeys: [UInt16: String] = [
+        UInt16(kVK_Space): "空格", UInt16(kVK_Return): "↩", UInt16(kVK_Tab): "⇥", UInt16(kVK_LeftArrow): "←", UInt16(kVK_RightArrow): "→",
+        UInt16(kVK_UpArrow): "↑", UInt16(kVK_DownArrow): "↓", UInt16(kVK_Delete): "⌫",
+    ]
+
+    /// Builds a spec from a key event. Returns nil when it needs a modifier and has none.
+    static func from(_ e: NSEvent) -> HotkeySpec? {
+        var m: UInt32 = 0
+        let f = e.modifierFlags
+        if f.contains(.control) { m |= UInt32(controlKey) }
+        if f.contains(.option) { m |= UInt32(optionKey) }
+        if f.contains(.shift) { m |= UInt32(shiftKey) }
+        if f.contains(.command) { m |= UInt32(cmdKey) }
+        let isF = functionKeys[e.keyCode] != nil
+        // Plain letters would fire while typing, so require ⌃, ⌥ or ⌘ unless it is an F-key.
+        guard isF || m & UInt32(controlKey | optionKey | cmdKey) != 0 else { return nil }
+        let label = functionKeys[e.keyCode] ?? namedKeys[e.keyCode] ?? (e.charactersIgnoringModifiers ?? "?").uppercased()
+        return HotkeySpec(keyCode: UInt32(e.keyCode), modifiers: m, label: label)
     }
 }

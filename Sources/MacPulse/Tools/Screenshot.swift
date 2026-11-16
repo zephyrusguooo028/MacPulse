@@ -156,12 +156,14 @@ final class ScreenshotController {
     private(set) var pins: [PinWindow] = []
 
     var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
+    private(set) var hotkeyOK = true
 
     func applyHotkey() {
-        if let k = AppSettings.shared.shotHotkey.key {
-            Hotkeys.shared.register(id: 1, keyCode: k.code, modifiers: k.mods) { ScreenshotController.shared.start() }
+        if let k = AppSettings.shared.shotHotkey {
+            hotkeyOK = Hotkeys.shared.register(id: 1, keyCode: k.keyCode, modifiers: k.modifiers) { ScreenshotController.shared.start() }
         } else {
             Hotkeys.shared.unregister(id: 1)
+            hotkeyOK = true
         }
     }
 

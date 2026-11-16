@@ -28,11 +28,15 @@ struct ScreenshotView: View {
                 }
 
                 Card("快捷键与保存", symbol: "command") {
-                    Picker("截图快捷键", selection: $s.shotHotkey) {
-                        ForEach(ShotHotkey.allCases) { Text($0.title).tag($0) }
+                    HStack(spacing: 10) {
+                        Text("截图快捷键")
+                        HotkeyRecorder(spec: Binding(get: { s.shotHotkey }, set: { s.shotHotkey = $0; ScreenshotController.shared.applyHotkey() }))
+                        Button("恢复默认") { s.shotHotkey = .defaultShot; ScreenshotController.shared.applyHotkey() }
+                            .disabled(s.shotHotkey == .defaultShot)
                     }
-                    .frame(maxWidth: 320)
-                    .onChange(of: s.shotHotkey) { _, _ in ScreenshotController.shared.applyHotkey() }
+                    if !ScreenshotController.shared.hotkeyOK {
+                        Text("这个快捷键已被占用，换一个试试。").font(.caption).foregroundStyle(Palette.danger)
+                    }
                     HStack {
                         Text("保存到")
                         Text(s.shotFolder).foregroundStyle(.secondary)
@@ -70,5 +74,54 @@ struct ScreenshotView: View {
             Image(systemName: symbol).foregroundStyle(Palette.theme).frame(width: 20)
             Text(text).foregroundStyle(.secondary)
         }
+    }
+}
+
+/// Click, then press the shortcut. Esc cancels, ⌫ clears.
+struct HotkeyRecorder: View {
+    @Binding var spec: HotkeySpec?
+    @Local private var recording = false
+    @Local private var hint: String?
+    @Local private var monitor: Any?
+
+    var body: some View {
+        Button {
+            recording ? stop() : start()
+        } label: {
+            Text(recording ? (hint ?? "请按下快捷键…") : (spec?.title ?? "未设置"))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .frame(minWidth: 130)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(recording ? Palette.theme.opacity(0.18) : Color.primary.opacity(0.06)))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(recording ? Palette.theme : Color.primary.opacity(0.12), lineWidth: recording ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+        .help("点一下，然后按下想要的组合键。Esc 取消，⌫ 清除。")
+        .onDisappear { stop() }
+    }
+
+    private func start() {
+        recording = true
+        hint = nil
+        Hotkeys.shared.unregister(id: 1) // so the old shortcut does not fire while recording
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            if e.keyCode == 53 { stop(); return nil }                       // esc
+            if e.keyCode == 51 && e.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty {
+                spec = nil; stop(); return nil                                // delete clears
+            }
+            if let s = HotkeySpec.from(e) { spec = s; stop() }
+            else { hint = "要加上 ⌃ / ⌥ / ⌘" }
+            return nil
+        }
+    }
+
+    private func stop() {
+        if let m = monitor { NSEvent.removeMonitor(m) }
+        monitor = nil
+        if recording { recording = false; ScreenshotController.shared.applyHotkey() }
     }
 }

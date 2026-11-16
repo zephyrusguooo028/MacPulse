@@ -20,7 +20,8 @@ public sealed class Settings
     public double SampleInterval { get; set; } = 2;
     public bool TypingEnabled { get; set; }
     public int TypingGoal { get; set; } = 10000;
-    public ShotHotkey ShotHotkey { get; set; } = ShotHotkey.AltShiftA;
+    /// null = no shortcut.
+    public HotkeyData? ShotKey { get; set; } = HotkeyData.Default;
     public string ShotFolder { get; set; } = "~\\Desktop";
 
     public List<string> ProjectRoots { get; set; } = new() { "~\\Documents", "~\\Desktop", "~\\source\\repos", "~\\Projects", "~\\code", "~\\dev" };

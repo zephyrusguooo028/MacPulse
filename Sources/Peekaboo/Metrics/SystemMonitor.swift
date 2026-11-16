@@ -117,6 +117,7 @@ final class SystemMonitor {
     }
 
     func start() {
+        if Demo.active { history = Demo.history() }
         _ = cpuReader.read()
         _ = netReader.read()
         sample()
@@ -140,6 +141,10 @@ final class SystemMonitor {
     }
 
     func refreshProcesses() {
+        if Demo.active {
+            processes = Demo.processes(); groups = Demo.groups(); processSamples = 5
+            return
+        }
         let p = procReader.read()
         processes = p
         groups = procReader.group(p)
@@ -173,7 +178,7 @@ final class SystemMonitor {
 
         samples.append(LiveSample(t: Date(), cpu: cpu.total, mem: memory.usedFraction, netIn: netIn, netOut: netOut))
         if samples.count > 150 { samples.removeFirst(samples.count - 150) }
-        if store.add(cpu: cpu.total, mem: memory.usedFraction, netIn: netIn, netOut: netOut, temp: temperature) {
+        if store.add(cpu: cpu.total, mem: memory.usedFraction, netIn: netIn, netOut: netOut, temp: temperature), !Demo.active {
             history = store.points
         }
         onTick?(self)

@@ -144,6 +144,10 @@ final class DiskScanModel {
     @ObservationIgnored private var engine: DiskScanEngine?
 
     func scan(_ url: URL? = nil) {
+        if Demo.active {
+            root = Demo.diskTree(); current = root; largeFiles = Demo.largeFiles(); lastScan = Date(); scanning = false
+            return
+        }
         if let url { scanRoot = url }
         engine?.cancel()
         let engine = DiskScanEngine(largeThreshold: Int64(AppSettings.shared.largeFileMB) * 1024 * 1024)

@@ -48,6 +48,7 @@ enum ResourceHogs {
 
     @MainActor
     static func find() -> [ResourceHog] {
+        if Demo.active { return Demo.hogs() }
         let m = SystemMonitor.shared
         let front = NSWorkspace.shared.frontmostApplication?.bundleURL?.path
         let running = NSWorkspace.shared.runningApplications

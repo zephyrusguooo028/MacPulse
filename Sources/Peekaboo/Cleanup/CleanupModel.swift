@@ -223,6 +223,17 @@ final class CleanupModel {
     /// Scans everything except project artifacts and large files, which come from the other models.
     func scan(projects: ProjectModel, disk: DiskScanModel) {
         guard !scanning else { return }
+        if Demo.active {
+            if projects.projects.isEmpty { projects.scan() }
+            if disk.root == nil { disk.scan() }
+            items = Demo.cleanupItems()
+            trashSize = 1_610_612_736; trashReadable = true
+            records = [CleanupRecord(date: Date().addingTimeInterval(-86400 * 3), bytes: 4_294_967_296, count: 12, permanent: false)]
+            syncFromOthers(projects: projects, disk: disk)
+            selected = Set(allItems.filter(\.recommended).map(\.url))
+            lastScan = Date()
+            return
+        }
         scanning = true
         let running = CleanupScanner.runningNames()
         let days = AppSettings.shared.downloadsOldDays

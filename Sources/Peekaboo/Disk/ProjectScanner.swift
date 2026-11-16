@@ -186,6 +186,7 @@ final class ProjectModel {
     var safeArtifacts: Int64 { projects.reduce(0) { $0 + $1.safeArtifactSize } }
 
     func scan() {
+        if Demo.active { projects = Demo.projects(); scanning = false; status = ""; lastScan = Date(); return }
         engine?.cancel()
         let engine = ProjectScanEngine()
         self.engine = engine

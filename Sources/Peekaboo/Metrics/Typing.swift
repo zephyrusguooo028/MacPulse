@@ -82,13 +82,15 @@ final class TypingMonitor {
     }
 
     private func start() {
-        guard tap == nil else { return }
+        guard tap == nil else { NSLog("Peekaboo typing: already running"); return }
         permissionGranted = CGPreflightListenEventAccess()
+        NSLog("Peekaboo typing: start, listen permission = \(permissionGranted)")
         guard permissionGranted else { running = false; return }
         let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
         // Listen-only: events pass through untouched.
         guard let t = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .tailAppendEventTap, options: .listenOnly,
                                         eventsOfInterest: CGEventMask(mask), callback: typingTapCallback, userInfo: nil) else {
+            NSLog("Peekaboo typing: tapCreate returned nil")
             running = false
             return
         }
@@ -97,6 +99,7 @@ final class TypingMonitor {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: t, enable: true)
         running = true
+        NSLog("Peekaboo typing: tap running")
         saveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             MainActor.assumeIsolated { TypingMonitor.shared.save() }
         }

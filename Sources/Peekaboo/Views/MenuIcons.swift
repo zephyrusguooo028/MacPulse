@@ -81,7 +81,8 @@ enum MenuMetric: String, CaseIterable, Identifiable {
         case .battery: return m.battery.map { "\($0.charging ? "⚡" : "电")\(Int(($0.percent * 100).rounded()))%" }
         case .typing:
             guard AppSettings.shared.typingEnabled else { return nil }
-            return TypingMonitor.shared.running ? "⌨\(TypingMonitor.shared.today.total)" : "⌨–"
+            guard TypingMonitor.shared.running else { return "打字 未开始" }
+            return "打字 " + TypingMonitor.shared.today.total.formatted(.number.grouping(.automatic))
         }
     }
 

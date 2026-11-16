@@ -19,6 +19,7 @@ struct MainView: View {
                     SidebarRow(tab: .cleanup)
                 }
                 Section("工具") {
+                    SidebarRow(tab: .screenshot)
                     SidebarRow(tab: .typing)
                 }
                 Section {
@@ -37,6 +38,7 @@ struct MainView: View {
                 case .processes: ProcessesView()
                 case .cleanup: CleanupView()
                 case .typing: TypingView()
+                case .screenshot: ScreenshotView()
                 case .settings: SettingsView()
                 }
             }
@@ -57,6 +59,7 @@ extension MainTab {
         case .projects: return Palette.netOut
         case .cleanup: return Color(red: 0.93, green: 0.36, blue: 0.55)
         case .typing: return Palette.mem
+        case .screenshot: return Color(red: 0.25, green: 0.70, blue: 0.85)
         case .settings: return Color(red: 0.55, green: 0.56, blue: 0.60)
         }
     }
@@ -124,6 +127,7 @@ private struct SidebarRow: View {
             return r > 0 ? (Fmt.bytes(r), false) : nil
         case .typing:
             return TypingMonitor.shared.running ? ("\(TypingMonitor.shared.today.total)", false) : nil
+        case .screenshot: return app.settings.shotHotkey == .none ? nil : (app.settings.shotHotkey.title, false)
         case .settings: return nil
         }
     }

@@ -189,3 +189,54 @@ enum IconSheet {
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
     }
 }
+
+/// `MacPulse --shot-demo <dir>`: renders the capture overlay and an export from a
+/// synthetic screen image, so the editor can be checked without screen recording.
+enum ShotDemo {
+    @MainActor
+    static func run(to dir: URL) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        guard let screen = NSScreen.main else { return }
+        let size = screen.frame.size
+        let scale = screen.backingScaleFactor
+        // Fake desktop: gradient plus two "windows".
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale), bitsPerSample: 8,
+                                   samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        rep.size = size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGradient(colors: [NSColor(red: 0.3, green: 0.4, blue: 0.8, alpha: 1), NSColor(red: 0.8, green: 0.4, blue: 0.6, alpha: 1)])!.draw(in: NSRect(origin: .zero, size: size), angle: 45)
+        let w1 = NSRect(x: 120, y: size.height - 520, width: 640, height: 400)
+        NSColor.white.setFill(); NSBezierPath(roundedRect: w1, xRadius: 10, yRadius: 10).fill()
+        ("MacPulse 截图测试窗口\n这里有一些文字，用来测试马赛克和标注。" as NSString).draw(in: w1.insetBy(dx: 30, dy: 60), withAttributes: [.font: NSFont.systemFont(ofSize: 26), .foregroundColor: NSColor.black])
+        NSColor(white: 0.15, alpha: 1).setFill(); NSBezierPath(roundedRect: NSRect(x: 820, y: size.height - 420, width: 360, height: 260), xRadius: 10, yRadius: 10).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        guard let cg = rep.cgImage else { return }
+
+        let s = ShotSession(screen: screen, image: cg, windowRects: [CGRect(x: 120, y: 120, width: 640, height: 400), CGRect(x: 820, y: 160, width: 360, height: 260)])
+        s.selection = CGRect(x: 100, y: 100, width: 700, height: 460)
+        s.phase = .editing
+        s.tool = .arrow
+        s.marks = [
+            ShotMark(kind: .rect(CGRect(x: 140, y: 170, width: 300, height: 60)), color: ShotPalette.colors[0], width: 3),
+            ShotMark(kind: .arrow(CGPoint(x: 600, y: 480), CGPoint(x: 450, y: 220)), color: ShotPalette.colors[1], width: 4),
+            ShotMark(kind: .pen((0..<40).map { CGPoint(x: 160 + Double($0) * 8, y: 420 + sin(Double($0) / 3) * 18) }), color: ShotPalette.colors[2], width: 3),
+            ShotMark(kind: .mosaic(CGRect(x: 145, y: 205, width: 480, height: 42)), color: .clear, width: 3),
+            ShotMark(kind: .text(CGPoint(x: 470, y: 330), "这里很重要"), color: ShotPalette.colors[3], width: 3),
+        ]
+        s.mouse = CGPoint(x: 500, y: 300)
+        let host = NSHostingView(rootView: CaptureView(session: s).environment(AppState.shared))
+        host.frame = NSRect(origin: .zero, size: size)
+        let win = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        win.contentView = host
+        host.layoutSubtreeIfNeeded()
+        if let r = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: r)
+            try? r.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("overlay.png"))
+        }
+        if let img = s.export(), let tiff = img.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            try? png.write(to: dir.appendingPathComponent("export.png"))
+            print("export \(Int(img.size.width))x\(Int(img.size.height)) pt, \(NSBitmapImageRep(data: tiff)!.pixelsWide) px wide")
+        }
+    }
+}

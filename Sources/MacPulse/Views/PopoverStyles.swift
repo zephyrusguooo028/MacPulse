@@ -48,6 +48,8 @@ struct PopoverFooter: View {
                 Label("清理", systemImage: "sparkles").frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            Button { StatusItemController.shared.closePopover(); ScreenshotController.shared.start(after: 0.25) } label: { Image(systemName: "camera.viewfinder") }
+                .buttonStyle(.borderless).help("截图").padding(.leading, 4)
             Button { WindowManager.shared.show(.settings) } label: { Image(systemName: "gearshape") }
                 .buttonStyle(.borderless).help("设置").padding(.leading, 4)
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }

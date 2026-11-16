@@ -9,6 +9,11 @@ enum Entry {
             MainActor.assumeIsolated { IconSheet.run(to: URL(fileURLWithPath: args[i + 1])) }
             exit(0)
         }
+        if let i = args.firstIndex(of: "--shot-demo"), i + 1 < args.count {
+            _ = NSApplication.shared
+            MainActor.assumeIsolated { ShotDemo.run(to: URL(fileURLWithPath: args[i + 1])) }
+            exit(0)
+        }
         if args.contains("--selftest") {
             SelfTest.run()
             exit(0)
@@ -18,7 +23,7 @@ enum Entry {
 }
 
 enum MainTab: String, CaseIterable, Identifiable {
-    case overview, disk, projects, processes, cleanup, typing, settings
+    case overview, disk, projects, processes, cleanup, typing, screenshot, settings
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -28,6 +33,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .processes: return "进程"
         case .cleanup: return "清理"
         case .typing: return "打字"
+        case .screenshot: return "截图"
         case .settings: return "设置"
         }
     }
@@ -39,6 +45,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .processes: return "list.bullet.rectangle"
         case .cleanup: return "sparkles"
         case .typing: return "keyboard"
+        case .screenshot: return "camera.viewfinder"
         case .settings: return "gearshape"
         }
     }
@@ -80,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             IconAnimator.shared.start()
             StatusItemController.shared.install()
             TypingMonitor.shared.apply()
+            ScreenshotController.shared.applyHotkey()
             AlertManager.shared.setup()
             if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
                 Snapshot.run(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))

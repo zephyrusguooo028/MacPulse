@@ -479,7 +479,7 @@ struct AnimatedIconView: View {
         Image(nsImage: img)
             .renderingMode(.template)
             .interpolation(.none)
-            .foregroundStyle(tinted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.primary))
+            .foregroundStyle(tinted ? AnyShapeStyle(Palette.theme) : AnyShapeStyle(.primary))
             .frame(width: max(icon.width, 18) * height / 18, height: height)
     }
 }

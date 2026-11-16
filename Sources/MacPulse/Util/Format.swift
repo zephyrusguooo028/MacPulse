@@ -72,6 +72,23 @@ enum Palette {
     static let warn = Color(red: 0.96, green: 0.62, blue: 0.10)
     static let danger = Color(red: 0.92, green: 0.28, blue: 0.30)
 
+    static func color(_ t: ThemeColor, cpu: Double) -> Color {
+        switch t {
+        case .system: return .accentColor
+        case .mono: return .primary
+        case .load: return load(cpu)
+        case .pink: return Color(red: 0.96, green: 0.45, blue: 0.62)
+        case .mint: return Color(red: 0.18, green: 0.74, blue: 0.62)
+        case .purple: return Color(red: 0.58, green: 0.40, blue: 0.95)
+        case .orange: return Color(red: 0.98, green: 0.58, blue: 0.20)
+        case .blue: return Color(red: 0.25, green: 0.60, blue: 0.98)
+        }
+    }
+
+    /// The user's chosen highlight colour.
+    @MainActor
+    static var theme: Color { color(AppSettings.shared.themeColor, cpu: SystemMonitor.shared.cpu.total) }
+
     /// Green → amber → red as a 0…1 load rises.
     static func load(_ v: Double) -> Color {
         if v < 0.6 { return disk }

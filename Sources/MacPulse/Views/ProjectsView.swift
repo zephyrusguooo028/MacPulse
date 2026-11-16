@@ -121,7 +121,7 @@ struct ProjectsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                         }
                         .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(selection == p.url ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor)))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(selection == p.url ? Palette.theme.opacity(0.12) : Color(nsColor: .controlBackgroundColor)))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

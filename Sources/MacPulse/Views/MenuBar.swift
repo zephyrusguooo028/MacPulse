@@ -13,10 +13,13 @@ struct PopoverView: View {
     var style: PopoverStyle? = nil
 
     var body: some View {
-        switch style ?? app.settings.popoverStyle {
-        case .compact: CompactPopover()
-        case .cards: CardsPopover()
-        case .chart: ChartPopover()
+        Group {
+            switch style ?? app.settings.popoverStyle {
+            case .compact: CompactPopover()
+            case .cards: CardsPopover()
+            case .chart: ChartPopover()
+            }
         }
+        .tint(Palette.theme)
     }
 }

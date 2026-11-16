@@ -17,6 +17,29 @@ struct SettingsView: View {
                         ForEach(PopoverStyle.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    HStack(spacing: 10) {
+                        Text("主题色")
+                        ForEach(ThemeColor.allCases) { t in
+                            Button { s.themeColor = t } label: {
+                                VStack(spacing: 4) {
+                                    ZStack {
+                                        if t == .system {
+                                            Circle().fill(AngularGradient(colors: [.red, .orange, .yellow, .green, .blue, .purple, .red], center: .center))
+                                        } else if t == .load {
+                                            Circle().fill(LinearGradient(colors: [Palette.disk, Palette.warn, Palette.danger], startPoint: .leading, endPoint: .trailing))
+                                        } else {
+                                            Circle().fill(Palette.color(t, cpu: 0))
+                                        }
+                                        if s.themeColor == t { Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(t == .mono ? Color(nsColor: .windowBackgroundColor) : .white) }
+                                    }
+                                    .frame(width: 22, height: 22)
+                                    .overlay(Circle().strokeBorder(Color.primary.opacity(s.themeColor == t ? 0.5 : 0.1), lineWidth: s.themeColor == t ? 2 : 1))
+                                    Text(t.title).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                     Divider()
                     Text("动画图标").font(.subheadline.weight(.semibold))
                     Text("CPU 越忙，动画越快。动画本身大约占 1–2% CPU，选「不显示」最省电。").font(.caption).foregroundStyle(.secondary)
@@ -33,8 +56,8 @@ struct SettingsView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(s.menuIcon == icon ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.04)))
-                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(s.menuIcon == icon ? Color.accentColor : .clear, lineWidth: 1.5))
+                                .background(RoundedRectangle(cornerRadius: 10).fill(s.menuIcon == icon ? Palette.theme.opacity(0.14) : Color.primary.opacity(0.04)))
+                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(s.menuIcon == icon ? Palette.theme : .clear, lineWidth: 1.5))
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)

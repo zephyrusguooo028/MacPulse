@@ -2,6 +2,24 @@ import Foundation
 import Observation
 import ServiceManagement
 
+/// The highlight colour used for the animated icon, selections and buttons.
+enum ThemeColor: String, CaseIterable, Identifiable {
+    case system, mono, load, pink, mint, purple, orange, blue
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .mono: return "黑白"
+        case .load: return "跟随负载"
+        case .pink: return "樱花粉"
+        case .mint: return "薄荷绿"
+        case .purple: return "葡萄紫"
+        case .orange: return "橘子橙"
+        case .blue: return "天空蓝"
+        }
+    }
+}
+
 @Observable
 final class AppSettings {
     static let shared = AppSettings()
@@ -11,6 +29,7 @@ final class AppSettings {
     /// Ticked metrics, in display order.
     var menuMetrics: [MenuMetric] { didSet { d.set(menuMetrics.map(\.rawValue), forKey: "menuMetrics") } }
     var iconTint: Bool { didSet { d.set(iconTint, forKey: "iconTint") } }
+    var themeColor: ThemeColor { didSet { d.set(themeColor.rawValue, forKey: "themeColor") } }
     var popoverStyle: PopoverStyle { didSet { d.set(popoverStyle.rawValue, forKey: "popoverStyle") } }
     var sampleInterval: Double { didSet { d.set(sampleInterval, forKey: "sampleInterval") } }
     var showTemperature: Bool { didSet { d.set(showTemperature, forKey: "showTemperature") } }
@@ -38,6 +57,7 @@ final class AppSettings {
         menuIcon = MenuIcon(rawValue: d.string(forKey: "menuIcon") ?? "") ?? .ghost
         menuMetrics = (d.stringArray(forKey: "menuMetrics") ?? ["cpu", "memory"]).compactMap(MenuMetric.init(rawValue:))
         iconTint = d.object(forKey: "iconTint") as? Bool ?? false
+        themeColor = ThemeColor(rawValue: d.string(forKey: "themeColor") ?? "") ?? .system
         popoverStyle = PopoverStyle(rawValue: d.string(forKey: "popoverStyle") ?? "") ?? .compact
         sampleInterval = d.object(forKey: "sampleInterval") as? Double ?? 2
         showTemperature = d.object(forKey: "showTemperature") as? Bool ?? true

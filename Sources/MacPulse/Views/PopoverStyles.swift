@@ -24,7 +24,7 @@ struct PopoverHeader: View {
         HStack(spacing: 10) {
             AnimatedIconView(icon: icon, height: 22)
                 .frame(width: 36, height: 36)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.accentColor.opacity(0.12)))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.theme.opacity(0.14)))
             VStack(alignment: .leading, spacing: 1) {
                 Text("MacPulse").font(.system(size: 13, weight: .semibold, design: .rounded))
                 Text(statusSentence(app.monitor, app.settings)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)

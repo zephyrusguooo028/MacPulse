@@ -66,7 +66,7 @@ struct CleanupView: View {
                     if c.working { ProgressView().controlSize(.small) } else { Label("清理所选", systemImage: "trash").fixedSize() }
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large)
-                .tint(permanent ? Palette.danger : .accentColor)
+                .tint(permanent ? Palette.danger : Palette.theme)
                 .disabled(c.selected.isEmpty || c.working)
             }
             HStack {

@@ -133,6 +133,17 @@ static class Snapshot
         await Task.Delay(1000);
         Save(MainWindow.Instance!, Path.Combine(dir, "5-cleanup.png"));
 
+        // Duplicates is captured before a scan: scanning personal folders could take minutes.
+        MainWindow.Instance!.Navigate(Page.Duplicates);
+        await Task.Delay(1500);
+        Save(MainWindow.Instance!, Path.Combine(dir, "13-duplicates.png"));
+
+        MainWindow.Instance!.Navigate(Page.Uninstall);
+        await Task.Delay(1000);
+        while (UninstallModel.Shared.Loading) await Task.Delay(500);
+        await Task.Delay(1000);
+        Save(MainWindow.Instance!, Path.Combine(dir, "14-uninstall.png"));
+
         // Exercise the keyboard hook: simulate keys and check they were counted.
         Settings.Shared.TypingEnabled = true;
         TypingMonitor.Shared.Apply();

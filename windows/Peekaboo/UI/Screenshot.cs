@@ -352,7 +352,9 @@ public sealed class ShotOverlay : Window
         };
         Canvas.SetLeft(_textBox, p.X); Canvas.SetTop(_textBox, p.Y);
         _ui.Children.Add(_textBox);
-        _textBox.Focus();
+        // Focus once it is in the visual tree, otherwise typing goes nowhere.
+        var box = _textBox;
+        Dispatcher.BeginInvoke(() => { Activate(); box.Focus(); Keyboard.Focus(box); }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     void CommitText()

@@ -9,11 +9,17 @@ namespace Peekaboo;
 public sealed class CleanupPage : PageView
 {
     bool _permanent;
+    readonly HashSet<string> _pickedHogs = new(StringComparer.OrdinalIgnoreCase);
+    bool _hogsInit;
+    string? _hogResult;
     readonly HashSet<CleanupCategory> _collapsed = new() { CleanupCategory.AppCache, CleanupCategory.TempAndLogs };
     CleanupModel M => CleanupModel.Shared;
 
+    public override void Tick() { if (!M.Working) Build(); }
+
     public override void Shown()
     {
+        SystemMonitor.Shared.WantProcesses(true);
         M.Changed += Build;
         ProjectModel.Shared.Changed += Resync;
         DiskModel.Shared.Changed += Resync;
@@ -23,6 +29,7 @@ public sealed class CleanupPage : PageView
 
     public override void Hidden()
     {
+        SystemMonitor.Shared.WantProcesses(false);
         M.Changed -= Build;
         ProjectModel.Shared.Changed -= Resync;
         DiskModel.Shared.Changed -= Resync;
@@ -82,7 +89,7 @@ public sealed class CleanupPage : PageView
         hist.Margin = new Thickness(14, 0, 0, 0); bin.Margin = new Thickness(14, 0, 0, 0);
         top.Children.Add(hist); top.Children.Add(bin); top.Children.Add(action);
 
-        var parts = new List<UIElement> { header, top };
+        var parts = new List<UIElement> { header, top, HogsCard() };
         if (M.LastResult is { } res) parts.Add(H(6, Glyph("", 14, Theme.B(Theme.DiskC)), T(res, 13, color: Theme.B(Theme.DiskC))));
         if (M.LastScan is null && !M.Scanning)
             parts.Add(Card(L("准备好了", "Ready"), "", Empty("", L("点「开始扫描」", "Click “Start scan”"), L("会检查开发工具缓存、项目依赖和构建产物、应用缓存、临时文件、下载文件夹和大文件。\n扫描只读取，不会删除任何东西。", "Checks developer tool caches, project dependencies and build output, app caches, temp files, Downloads and large files.\nScanning only reads; nothing is deleted."))));
@@ -170,5 +177,52 @@ public sealed class CleanupPage : PageView
                 Info(L("部分项目没有清理", "Some items weren’t cleaned"), string.Join("\n", lines));
             }
         });
+    }
+
+    Border HogsCard()
+    {
+        var hogs = ResourceHogs.Find();
+        if (!_hogsInit && SystemMonitor.Shared.ProcessSamples >= 3) { foreach (var h in hogs.Where(h => h.Recommended)) _pickedHogs.Add(h.Group.Id); _hogsInit = true; }
+        var picked = hogs.Where(h => _pickedHogs.Contains(h.Group.Id)).ToList();
+        var (title, detail, level) = ResourceHogs.MemorySummary();
+        var color = level >= 4 ? Theme.DangerC : level >= 2 ? Theme.WarnC : Theme.DiskC;
+        var quit = Btn(L("退出所选", "Quit selected"), () =>
+        {
+            var names = string.Join("\n", picked.Take(8).Select(h => "• " + h.Group.Name));
+            if (!Confirm(L($"关闭 {picked.Count} 个应用？", $"Close {picked.Count} apps?"),
+                         names + L("\n\n会像点关闭按钮一样让它们自己保存后退出，有未保存内容的应用会先询问你。", "\n\nThey close like clicking X, so apps with unsaved work will ask you first."))) return;
+            var r = ResourceHogs.Quit(picked);
+            foreach (var h in picked) _pickedHogs.Remove(h.Group.Id);
+            _hogResult = L($"已请求关闭 {r.count} 个应用，约可释放 {Fmt.Bytes(r.memory)} 内存", $"Asked {r.count} apps to close, freeing about {Fmt.Bytes(r.memory)}");
+            SystemMonitor.Shared.RefreshProcesses();
+            Build();
+        }, primary: true, glyph: "\uE711");
+        quit.IsEnabled = picked.Count > 0;
+
+        var detailT = T(detail, 12, color: Theme.Secondary); detailT.TextWrapping = TextWrapping.Wrap; detailT.TextTrimming = TextTrimming.None;
+        var m = SystemMonitor.Shared;
+        var body = V(10,
+            Row(H(10, new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(5), Background = Theme.B(color), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 5, 0, 0) },
+                      V(2, T(title, 14, FontWeights.SemiBold), detailT)),
+                V(2, T(Fmt.Pct(m.Memory.UsedFraction), 18, FontWeights.SemiBold), T(L($"内存 · CPU {Fmt.Pct(m.Cpu.Total)}", $"memory · CPU {Fmt.Pct(m.Cpu.Total)}"), 11, color: Theme.Secondary))));
+        if (_hogResult is { } res) body.Children.Add(T(res, 12.5, color: Theme.B(Theme.DiskC)));
+        body.Children.Add(new Border { Height = 1, Background = Theme.Line });
+        if (hogs.Count == 0)
+            body.Children.Add(T(m.ProcessSamples < 3 ? L("正在观察各个应用的占用情况，几秒后显示…", "Watching app usage, results in a few seconds…")
+                                                     : L("没有发现持续占用 CPU 或长时间闲置的大内存应用，一切正常。", "No busy or long-idle memory-heavy apps found. All good."), 12.5, color: Theme.Secondary));
+        foreach (var h in hogs)
+        {
+            var hog = h;
+            var cb = Check("", _pickedHogs.Contains(h.Group.Id), on => { if (on) _pickedHogs.Add(hog.Group.Id); else _pickedHogs.Remove(hog.Group.Id); Build(); });
+            var tagC = h.Cpu ? Theme.DangerC : Theme.WarnC;
+            var tag = new Border { Background = Theme.B(tagC, 0.15), CornerRadius = new CornerRadius(8), Padding = new Thickness(6, 0, 6, 1), Child = T(h.Cpu ? "CPU" : L("闲置", "Idle"), 10.5, color: Theme.B(tagC)) };
+            body.Children.Add(Row(H(10, cb, PopupWindow.AppIcon(h.Group.Path, 20), V(1, H(6, T(h.Group.Name, 13), tag), T(h.Reason, 11.5, color: Theme.Secondary))),
+                                 H(12, T(Fmt.Bytes(h.Group.Memory), 12.5), T($"{h.Group.Cpu * 100:0}%", 12.5, color: Theme.Secondary))));
+        }
+        var note = T(L("只会正常关闭应用（像点关闭按钮），不会强制结束；系统进程、资源管理器和 Peekaboo 自己不会出现在这里。",
+                       "Apps are closed normally (like clicking X), never force-killed. System processes, Explorer and Peekaboo itself are never listed."), 11, color: Theme.Tertiary);
+        note.TextWrapping = TextWrapping.Wrap; note.TextTrimming = TextTrimming.None;
+        body.Children.Add(note);
+        return Card(L("释放内存和 CPU", "Free up memory and CPU"), "\uE964", body, quit);
     }
 }

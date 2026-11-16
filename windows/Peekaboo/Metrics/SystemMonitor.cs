@@ -105,7 +105,36 @@ public sealed class SystemMonitor
     {
         Processes = _procs.Read();
         Groups = _procs.Group(Processes);
+        // Smoothed CPU per app so one busy second does not look like a runaway process.
+        double alpha = _processDemand > 0 ? 0.15 : 0.4;
+        var next = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var g in Groups) next[g.Id] = (CpuAverage.TryGetValue(g.Id, out var prev) ? prev : g.Cpu) * (1 - alpha) + g.Cpu * alpha;
+        CpuAverage = next;
+        ProcessSamples++;
     }
+
+    public Dictionary<string, double> CpuAverage { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+    public int ProcessSamples { get; private set; }
+    /// Last time each executable owned the foreground window.
+    public Dictionary<string, DateTime> LastActive { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public DateTime StartedAt { get; } = DateTime.Now;
+
+    void TrackForeground()
+    {
+        try
+        {
+            var h = GetForegroundWindow();
+            GetWindowThreadProcessId(h, out uint pid);
+            if (pid == 0) return;
+            using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+            var path = p.MainModule?.FileName;
+            if (path is not null) LastActive[path] = DateTime.Now;
+        }
+        catch { }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 
     public void Sample()
     {
@@ -115,7 +144,9 @@ public sealed class SystemMonitor
         (NetIn, NetOut) = _net.Read();
         if (_tick % 10 == 1) { Disk = DiskReader.Read(); Battery = BatteryReader.Read(); }
         if (_tick % 2 == 1) Gpu = _gpu.Read() ?? Gpu;
-        if (_processDemand > 0) RefreshProcesses();
+        // Background sample every ~30 s keeps CPU averages warm for the cleanup page.
+        if (_processDemand > 0 || _tick % 15 == 0) RefreshProcesses();
+        TrackForeground();
 
         Samples.Add(new LiveSample(DateTime.Now, Cpu.Total, Memory.UsedFraction, NetIn, NetOut));
         if (Samples.Count > 150) Samples.RemoveRange(0, Samples.Count - 150);

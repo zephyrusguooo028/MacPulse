@@ -7,16 +7,26 @@ struct MainView: View {
         @Bindable var app = app
         NavigationSplitView {
             List(selection: Binding(get: { app.tab }, set: { if let t = $0 { app.tab = t } })) {
-                Section {
-                    ForEach(MainTab.allCases.filter { $0 != .settings }) { t in
-                        Label(t.title, systemImage: t.symbol).tag(t)
-                    }
+                Section { SidebarBrand() }
+                    .listRowSeparator(.hidden)
+                Section("监控") {
+                    SidebarRow(tab: .overview)
+                    SidebarRow(tab: .processes)
+                }
+                Section("空间") {
+                    SidebarRow(tab: .disk)
+                    SidebarRow(tab: .projects)
+                    SidebarRow(tab: .cleanup)
+                }
+                Section("工具") {
+                    SidebarRow(tab: .typing)
                 }
                 Section {
-                    Label(MainTab.settings.title, systemImage: MainTab.settings.symbol).tag(MainTab.settings)
+                    SidebarRow(tab: .settings)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
             .safeAreaInset(edge: .bottom) { SidebarFooter().padding(12) }
         } detail: {
             Group {
@@ -37,20 +47,112 @@ struct MainView: View {
     }
 }
 
+extension MainTab {
+    /// Each tab gets its own colour tile, like System Settings.
+    var tileColor: Color {
+        switch self {
+        case .overview: return Palette.cpu
+        case .processes: return Color(red: 0.36, green: 0.42, blue: 0.55)
+        case .disk: return Palette.disk
+        case .projects: return Palette.netOut
+        case .cleanup: return Color(red: 0.93, green: 0.36, blue: 0.55)
+        case .typing: return Palette.mem
+        case .settings: return Color(red: 0.55, green: 0.56, blue: 0.60)
+        }
+    }
+}
+
+private struct SidebarBrand: View {
+    @Environment(AppState.self) private var app
+    var body: some View {
+        let icon = app.settings.menuIcon == .none ? MenuIcon.ghost : app.settings.menuIcon
+        HStack(spacing: 10) {
+            AnimatedIconView(icon: icon, height: 20)
+                .frame(width: 34, height: 34)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Palette.theme.opacity(0.14)))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("MacPulse").font(.system(size: 14, weight: .semibold, design: .rounded))
+                Text(statusSentence(app.monitor, app.settings)).font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
+        .padding(.vertical, 4)
+        .selectionDisabled()
+        .onAppear { IconAnimator.shared.viewer(true) }
+        .onDisappear { IconAnimator.shared.viewer(false) }
+    }
+}
+
+private struct SidebarRow: View {
+    let tab: MainTab
+    @Environment(AppState.self) private var app
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: tab.symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(tab.tileColor.gradient))
+            Text(tab.title)
+            Spacer(minLength: 4)
+            if let v = value {
+                Text(v.text)
+                    .font(.system(size: 10.5, weight: .medium)).monospacedDigit()
+                    .foregroundStyle(v.alert ? .white : .secondary)
+                    .padding(.horizontal, 6).padding(.vertical, 1.5)
+                    .background(Capsule().fill(v.alert ? Palette.danger : Color.primary.opacity(0.07)))
+                    .contentTransition(.numericText())
+                    .animation(.easeOut(duration: 0.3), value: v.text)
+            }
+        }
+        .padding(.vertical, 2)
+        .tag(tab)
+    }
+
+    /// Live number shown on the right of each row.
+    private var value: (text: String, alert: Bool)? {
+        let m = app.monitor
+        switch tab {
+        case .overview: return (Fmt.pct(m.cpu.total), m.cpu.total > 0.9)
+        case .processes: return (Fmt.pct(m.memory.usedFraction), m.memory.pressureLevel >= 4)
+        case .disk:
+            let low = m.disk.total > 0 && Double(m.disk.available) < Double(app.settings.alertDiskGB) * 1_073_741_824
+            return ("剩 " + MenuBarRenderer.diskText(m.disk.available), low)
+        case .projects: return app.projects.projects.isEmpty ? nil : ("\(app.projects.projects.count)", false)
+        case .cleanup:
+            let r = app.cleanup.recommendedSize
+            return r > 0 ? (Fmt.bytes(r), false) : nil
+        case .typing:
+            return TypingMonitor.shared.running ? ("\(TypingMonitor.shared.today.total)", false) : nil
+        case .settings: return nil
+        }
+    }
+}
+
 private struct SidebarFooter: View {
     @Environment(AppState.self) private var app
     var body: some View {
         let d = app.monitor.disk
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: "internaldrive").foregroundStyle(.secondary)
-                Text("Macintosh HD").font(.caption.weight(.medium))
-            }
-            SizeBar(fraction: d.usedFraction, color: d.usedFraction > 0.9 ? Palette.danger : Palette.disk)
-            Text("可用 \(Fmt.bytes(d.available)) / 共 \(Fmt.bytes(d.total))")
-                .font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+        let mem = app.monitor.memory
+        VStack(alignment: .leading, spacing: 8) {
+            meter("internaldrive", "磁盘", d.usedFraction, "\(MenuBarRenderer.diskText(d.available)) 可用",
+                  d.usedFraction > 0.9 ? Palette.danger : Palette.disk)
+            meter("memorychip", "内存", mem.usedFraction, Fmt.pct(mem.usedFraction),
+                  mem.pressureLevel >= 4 ? Palette.danger : Palette.mem)
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.04)))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.04)))
+    }
+
+    private func meter(_ symbol: String, _ title: String, _ v: Double, _ value: String, _ c: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(title).font(.system(size: 10.5, weight: .medium))
+                Spacer()
+                Text(value).font(.system(size: 10.5)).foregroundStyle(.secondary).monospacedDigit()
+            }
+            SizeBar(fraction: v, color: c)
+        }
     }
 }

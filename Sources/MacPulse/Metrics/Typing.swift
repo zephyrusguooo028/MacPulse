@@ -128,6 +128,21 @@ final class TypingMonitor {
         if let data = try? JSONEncoder().encode(days) { try? data.write(to: url, options: .atomic) }
     }
 
+    /// Screenshot runs only: fills a week with made-up counts in memory (never saved).
+    func loadDemo() {
+        var rng = SystemRandomNumberGenerator()
+        for off in 0..<30 {
+            var d = TypingDay()
+            for h in 9..<23 { d.hours[h] = Int.random(in: 100...1400, using: &rng) }
+            d.total = d.hours.reduce(0, +)
+            for row in KeyboardLayout.rows { for k in row { d.keys[String(k.code)] = Int.random(in: 0...(k.code == 49 ? 1800 : 600), using: &rng) } }
+            d.apps = ["Cursor": d.total / 2, "微信": d.total / 4, "飞书": d.total / 6, "Safari": d.total / 12]
+            d.activeSeconds = Double(d.total) / 3.2
+            d.longestStreak = 1500
+            days[Self.dayKey(Calendar.current.date(byAdding: .day, value: -off, to: Date())!)] = d
+        }
+    }
+
     func clearAll() {
         days = [:]
         dirty = true

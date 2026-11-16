@@ -104,6 +104,7 @@ enum Snapshot {
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("5-cleanup.png"))
 
+            TypingMonitor.shared.loadDemo()
             app.tab = .typing
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("7-typing.png"))

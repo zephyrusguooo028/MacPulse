@@ -104,7 +104,7 @@ struct TypingView: View {
                 }
             }
             .chartXScale(domain: -0.5...23.5)
-            .chartXAxis { AxisMarks(values: [0, 6, 12, 18, 23]) { v in AxisValueLabel { Text("\(v.as(Int.self) ?? 0)点") } } }
+            .chartXAxis { AxisMarks(values: [0, 6, 12, 18]) { v in AxisValueLabel { Text("\(v.as(Int.self) ?? 0)点") } } }
             .frame(height: 160)
         }
     }

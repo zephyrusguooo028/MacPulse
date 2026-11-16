@@ -217,7 +217,7 @@ final class ScreenshotController {
             w.isOpaque = true
             w.backgroundColor = .black
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            w.contentView = NSHostingView(rootView: CaptureView(session: session).environment(AppState.shared))
+            w.contentView = FirstMouseHostingView(rootView: CaptureView(session: session).environment(AppState.shared))
             w.setFrame(screen.frame, display: true)
             w.makeKeyAndOrderFront(nil)
             windows.append(w)
@@ -292,6 +292,11 @@ final class ScreenshotController {
     }
 }
 
+/// Takes the first click as a real click instead of spending it on activating the window.
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 final class OverlayWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -307,40 +312,53 @@ struct CaptureView: View {
         let full = Image(decorative: s.image, scale: 1).resizable()
         let pix = s.pixelated.map { Image(decorative: $0, scale: 1).resizable() }
         ZStack(alignment: .topLeading) {
-            full.frame(width: s.size.width, height: s.size.height)
+            // Picture layer: owns the select / draw gestures. The toolbar sits above it
+            // with no gestures attached, so its buttons get clicks right away.
+            ZStack(alignment: .topLeading) {
+                full.frame(width: s.size.width, height: s.size.height)
 
-            // Dim everything outside the selection (or the hovered window).
-            let hole = s.selection ?? (s.dragStart == nil ? s.hover : nil)
-            Canvas { ctx, size in
-                var p = Path(CGRect(origin: .zero, size: size))
-                if let h = hole { p.addRect(h) }
-                ctx.fill(p, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
-            }
-            .frame(width: s.size.width, height: s.size.height)
-            .allowsHitTesting(false)
+                // Dim everything outside the selection (or the hovered window).
+                let hole = s.selection ?? (s.dragStart == nil ? s.hover : nil)
+                Canvas { ctx, size in
+                    var p = Path(CGRect(origin: .zero, size: size))
+                    if let h = hole { p.addRect(h) }
+                    ctx.fill(p, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
+                }
+                .frame(width: s.size.width, height: s.size.height)
+                .allowsHitTesting(false)
 
-            Canvas { ctx, _ in
-                drawMarks(s.marks + (s.draft.map { [$0] } ?? []), in: ctx, origin: .zero, pixelated: pix, fullSize: s.size)
-            }
-            .allowsHitTesting(false)
+                Canvas { ctx, _ in
+                    drawMarks(s.marks + (s.draft.map { [$0] } ?? []), in: ctx, origin: .zero, pixelated: pix, fullSize: s.size)
+                }
+                .allowsHitTesting(false)
 
-            if let h = hole {
-                Rectangle().strokeBorder(Palette.cpu, lineWidth: 1.5)
-                    .frame(width: h.width, height: h.height).offset(x: h.minX, y: h.minY)
-                    .allowsHitTesting(false)
-                Text("\(Int(h.width)) × \(Int(h.height))")
-                    .font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(.white)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Capsule().fill(.black.opacity(0.7)))
-                    .offset(x: h.minX, y: max(h.minY - 24, 4))
-                    .allowsHitTesting(false)
-            }
+                if let h = hole {
+                    Rectangle().strokeBorder(Palette.cpu, lineWidth: 1.5)
+                        .frame(width: h.width, height: h.height).offset(x: h.minX, y: h.minY)
+                        .allowsHitTesting(false)
+                    Text("\(Int(h.width)) × \(Int(h.height))")
+                        .font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(.black.opacity(0.7)))
+                        .offset(x: h.minX, y: max(h.minY - 24, 4))
+                        .allowsHitTesting(false)
+                }
 
-            if s.phase == .selecting && s.dragStart == nil {
-                Loupe(image: s.image, point: s.mouse, size: s.size)
-                    .offset(x: min(s.mouse.x + 20, s.size.width - 130), y: min(s.mouse.y + 20, s.size.height - 150))
-                    .allowsHitTesting(false)
+                if s.phase == .selecting && s.dragStart == nil {
+                    Loupe(image: s.image, point: s.mouse, size: s.size)
+                        .offset(x: min(s.mouse.x + 20, s.size.width - 130), y: min(s.mouse.y + 20, s.size.height - 150))
+                        .allowsHitTesting(false)
+                }
             }
+            .frame(width: s.size.width, height: s.size.height, alignment: .topLeading)
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                if case .active(let p) = phase {
+                    s.mouse = p
+                    if s.phase == .selecting && s.dragStart == nil { s.hover = s.windowAt(p) }
+                }
+            }
+            .gesture(DragGesture(minimumDistance: 0).onChanged(dragChanged).onEnded(dragEnded))
 
             if let at = s.textAt {
                 TextField("输入文字，回车完成", text: $session.textValue)
@@ -361,17 +379,6 @@ struct CaptureView: View {
             }
         }
         .frame(width: s.size.width, height: s.size.height, alignment: .topLeading)
-        .contentShape(Rectangle())
-        .onContinuousHover { phase in
-            if case .active(let p) = phase {
-                s.mouse = p
-                if s.phase == .selecting && s.dragStart == nil { s.hover = s.windowAt(p) }
-            }
-        }
-        .gesture(DragGesture(minimumDistance: 0).onChanged(dragChanged).onEnded(dragEnded))
-        .simultaneousGesture(TapGesture(count: 2).onEnded {
-            if s.phase == .editing, s.tool == nil { ScreenshotController.shared.copyAndClose() }
-        })
     }
 
     private func toolbarOffset(_ sel: CGRect) -> CGSize {
@@ -441,6 +448,10 @@ struct CaptureView: View {
             if let sel = s.selection, sel.width > 4, sel.height > 4 { s.phase = .editing } else { s.selection = nil }
         case .editing:
             s.moveOffset = nil
+            if s.tool == nil, NSApp.currentEvent?.clickCount == 2, s.selection?.contains(g.location) == true {
+                ScreenshotController.shared.copyAndClose()
+                return
+            }
             if s.tool == .text, let sel = s.selection, sel.contains(g.location) {
                 if s.textAt != nil { commitText() }
                 s.textAt = g.location
@@ -487,6 +498,7 @@ private struct ShotToolbar: View {
                 Circle().fill(c).frame(width: 14, height: 14)
                     .overlay(Circle().stroke(session.color == c ? Color.primary : Color.primary.opacity(0.2), lineWidth: session.color == c ? 2 : 1))
                     .padding(3)
+                    .contentShape(Rectangle())
                     .onTapGesture { session.color = c }
             }
             Menu {
@@ -518,6 +530,7 @@ private struct ShotToolbar: View {
             Image(systemName: symbol).font(.system(size: 13, weight: .medium))
                 .frame(width: 28, height: 26)
                 .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
+                .contentShape(RoundedRectangle(cornerRadius: 6))   // whole tile is clickable, not just the glyph
         }
         .buttonStyle(.plain).help(help)
     }

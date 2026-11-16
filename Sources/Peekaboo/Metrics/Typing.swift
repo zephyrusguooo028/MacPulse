@@ -55,9 +55,22 @@ final class TypingMonitor {
     }
 
     /// Starts or stops the listener according to the setting.
+    @ObservationIgnored private var retry: Timer?
+
     func apply() {
         permissionGranted = CGPreflightListenEventAccess()
         if AppSettings.shared.typingEnabled { start() } else { stop() }
+        // Waiting for permission: keep retrying in the background, not only on the Typing page.
+        retry?.invalidate(); retry = nil
+        if AppSettings.shared.typingEnabled && !running {
+            retry = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+                MainActor.assumeIsolated {
+                    let t = TypingMonitor.shared
+                    t.permissionGranted = CGPreflightListenEventAccess()
+                    if t.permissionGranted { t.retry?.invalidate(); t.retry = nil; t.start() }
+                }
+            }
+        }
     }
 
     func requestPermission() {

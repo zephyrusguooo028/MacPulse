@@ -79,7 +79,9 @@ enum MenuMetric: String, CaseIterable, Identifiable {
         case .temperature: return m.temperature.map { String(format: "%.0f°", $0) }
         case .gpu: return m.gpu.map { "GPU \(Int(($0 * 100).rounded()))%" }
         case .battery: return m.battery.map { "\($0.charging ? "⚡" : "电")\(Int(($0.percent * 100).rounded()))%" }
-        case .typing: return TypingMonitor.shared.running ? "⌨\(TypingMonitor.shared.today.total)" : nil
+        case .typing:
+            guard AppSettings.shared.typingEnabled else { return nil }
+            return TypingMonitor.shared.running ? "⌨\(TypingMonitor.shared.today.total)" : "⌨–"
         }
     }
 

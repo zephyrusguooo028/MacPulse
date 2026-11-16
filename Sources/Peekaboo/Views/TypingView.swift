@@ -11,7 +11,12 @@ struct TypingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 PageHeader(title: "打字", subtitle: "只统计按了多少次、按的哪个键，从不记录你打了什么内容") {
-                    Toggle("开启打字统计", isOn: Binding(get: { s.typingEnabled }, set: { s.typingEnabled = $0; t.apply() }))
+                    Toggle("开启打字统计", isOn: Binding(get: { s.typingEnabled }, set: {
+                        s.typingEnabled = $0
+                        // Turning it on also shows today's count in the menu bar (can be unticked in Settings).
+                        if $0 && !s.menuMetrics.contains(.typing) { s.menuMetrics.append(.typing) }
+                        t.apply()
+                    }))
                         .toggleStyle(.switch)
                 }
 

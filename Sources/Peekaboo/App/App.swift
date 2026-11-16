@@ -101,6 +101,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             m.start()
             IconAnimator.shared.start()
             StatusItemController.shared.install()
+            // Users who turned typing on before the menu bar option existed get it once.
+            let st = AppSettings.shared
+            if st.typingEnabled && !UserDefaults.standard.bool(forKey: "typingMetricAdded") {
+                if !st.menuMetrics.contains(.typing) { st.menuMetrics.append(.typing) }
+                UserDefaults.standard.set(true, forKey: "typingMetricAdded")
+            }
             TypingMonitor.shared.apply()
             ScreenshotController.shared.applyHotkey()
             AlertManager.shared.setup()

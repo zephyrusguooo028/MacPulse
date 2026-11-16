@@ -124,7 +124,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AlertManager.shared.setup()
             if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
                 Snapshot.run(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
-            } else if CommandLine.arguments.contains("--open") {
+            } else if !Demo.active {
+                OnboardingWindow.showIfNeeded()
+            }
+            if CommandLine.arguments.contains("--open") {
                 WindowManager.shared.show(.overview)
             }
         }

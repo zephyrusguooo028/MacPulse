@@ -165,6 +165,16 @@ struct SettingsView: View {
                 pathList(title: L("项目目录", "Project folders"), symbol: "folder", note: L("在这些目录里自动找开发项目（最多往下找 4 层）。", "Development projects are found automatically in these folders (up to 4 levels deep)."), paths: $s.projectRoots)
                 pathList(title: L("白名单", "Whitelist"), symbol: "lock.shield", note: L("这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", "These locations are never cleaned. You can also right-click any list item and choose “Add to whitelist”."), paths: $s.whitelist)
 
+                Card(L("权限", "Permissions"), symbol: "lock.shield") {
+                    HStack {
+                        Text(L("截图、打字统计和自动粘贴需要系统权限。在这里一次看清每项的状态并去授权。",
+                               "Screenshots, typing stats and auto-paste need system permissions. See and grant them in one place."))
+                            .font(.callout).foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L("打开权限设置", "Open permissions")) { OnboardingWindow.show() }
+                    }
+                }
+
                 ClipboardSettingsCard()
                 WidgetSettingsCard()
 

@@ -70,6 +70,12 @@ enum Snapshot {
                 savePopover(st, to: dir.appendingPathComponent("0-popover-\(st.rawValue).png"))
             }
 
+            OnboardingWindow.show()
+            try? await Task.sleep(for: .seconds(2))
+            if let v = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<AnyView> || $0.title.contains("Peekaboo") && $0 !== WindowManager.shared.window })?.contentView {
+                saveView(v, to: dir.appendingPathComponent("0-onboarding.png"))
+            }
+            OnboardingWindow.close()
             if CommandLine.arguments.contains("--popover-only") { NSApp.terminate(nil); return }
             WindowManager.shared.show(.overview)
             try? await Task.sleep(for: .seconds(2))

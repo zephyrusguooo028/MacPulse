@@ -17,11 +17,24 @@ struct TypingView: View {
 
                 if s.typingEnabled && !t.permissionGranted {
                     Card("需要「输入监控」权限", symbol: "lock.shield") {
-                        Text("macOS 要求统计按键的应用获得「输入监控」权限。MacPulse 只数按键次数，不记录内容，也不联网。授权后回到这里关掉再打开一次开关。")
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Button("去授权") { t.requestPermission() }.buttonStyle(.borderedProminent)
-                            Button("我已授权，重新检查") { t.apply() }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("macOS 要求统计按键的应用获得「输入监控」权限。MacPulse 只数按键次数，不记录内容，也不联网。")
+                                .foregroundStyle(.secondary)
+                            Text("1. 点「去授权」，在 系统设置 › 隐私与安全性 › 输入监控 里打开 MacPulse 的开关。\n2. 如果列表里已经有 MacPulse 但开关打开了还是没反应，先选中它点「−」删掉，再回来点一次「去授权」。\n3. 授权后这里会自动检测；如果一直没变化，点「重启 MacPulse」。")
+                                .font(.callout).foregroundStyle(.secondary)
+                            HStack {
+                                Button("去授权") { t.requestPermission() }.buttonStyle(.borderedProminent)
+                                Button("重启 MacPulse") { AppRelaunch.now() }
+                                ProgressView().controlSize(.small)
+                                Text("正在等待授权…").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .task {
+                        // Poll so the page reacts as soon as permission is granted.
+                        while !Task.isCancelled && !t.permissionGranted {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            t.apply()
                         }
                     }
                 } else if !s.typingEnabled && t.days.isEmpty {

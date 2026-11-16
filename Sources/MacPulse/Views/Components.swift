@@ -197,6 +197,18 @@ struct EmptyHint: View {
     }
 }
 
+enum AppRelaunch {
+    /// Quits and reopens MacPulse; some privacy permissions only apply after a restart.
+    static func now() {
+        let path = Bundle.main.bundlePath
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", "sleep 0.8; /usr/bin/open \"\(path)\""]
+        try? p.run()
+        NSApp.terminate(nil)
+    }
+}
+
 enum FileActions {
     static func reveal(_ url: URL) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
 

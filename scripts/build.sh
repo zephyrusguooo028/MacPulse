@@ -19,5 +19,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/MacPulse "$APP/Contents/MacOS/MacPulse"
 cp scripts/Info.plist "$APP/Contents/Info.plist"
 cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-codesign --force --sign - --timestamp=none "$APP"
+# Ad-hoc signature, but with a designated requirement on the bundle id only, so macOS
+# privacy permissions (Input Monitoring, Screen Recording) survive rebuilds.
+codesign --force --sign - --timestamp=none -r='designated => identifier "local.macpulse.app"' "$APP"
 echo "Built $APP"

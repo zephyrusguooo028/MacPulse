@@ -22,7 +22,13 @@ struct ScreenshotView: View {
                             .foregroundStyle(.secondary)
                         HStack {
                             Button("去授权") { ScreenshotController.shared.start() }.buttonStyle(.borderedProminent)
-                            Button("重新检查") { permission = ScreenshotController.shared.hasPermission }
+                            Button("重启 MacPulse") { AppRelaunch.now() }
+                        }
+                        .task {
+                            while !Task.isCancelled && !permission {
+                                try? await Task.sleep(for: .seconds(1.5))
+                                permission = ScreenshotController.shared.hasPermission
+                            }
                         }
                     }
                 }

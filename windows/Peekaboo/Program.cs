@@ -13,6 +13,7 @@ public static class Program
         Theme.Load();
         if (Arg(args, "--selftest") is { } report) { SelfTest.Run(report); return 0; }
         if (Arg(args, "--icon-sheet") is { } sheet) { SelfTest.IconSheet(sheet); return 0; }
+        if (Arg(args, "--shot-demo") is { } shotDir) { ShotDemo.Run(shotDir); return 0; }
 
         using var mutex = new Mutex(true, "Peekaboo.SingleInstance", out bool first);
         if (!first && Arg(args, "--snapshot") is null) return 0;
@@ -25,6 +26,7 @@ public static class Program
             m.Start();
             TrayController.Shared.Install();
             TypingMonitor.Shared.Apply();
+            Screenshot.ApplyHotkey();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };
@@ -174,5 +176,66 @@ static class Snapshot
             enc.Save(fs);
         }
         catch (Exception e) { File.WriteAllText(file + ".error.txt", e.ToString()); }
+    }
+}
+
+/// `--shot-demo <dir>`: renders the screenshot editor on a real capture of the screen
+/// with sample annotations, plus the exported crop (used by CI).
+static class ShotDemo
+{
+    public static void Run(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Startup += async (_, _) =>
+        {
+            try
+            {
+                var b = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+                using var bmp = new System.Drawing.Bitmap(b.Width, b.Height);
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    using var bg = new System.Drawing.Drawing2D.LinearGradientBrush(new System.Drawing.Rectangle(0, 0, b.Width, b.Height), System.Drawing.Color.SteelBlue, System.Drawing.Color.Orchid, 45f);
+                    g.FillRectangle(bg, 0, 0, b.Width, b.Height);
+                    g.FillRectangle(System.Drawing.Brushes.White, 120, 120, 640, 400);
+                    using var f = new System.Drawing.Font("Microsoft YaHei UI", 20);
+                    g.DrawString("Peekaboo 截图测试窗口\n这里有一些文字，用来测试马赛克和标注。", f, System.Drawing.Brushes.Black, 150, 180);
+                }
+                var o = new ShotOverlay(Screenshot.ToSource(bmp), new List<Rect> { new(120, 120, 640, 400) }, b);
+                o.Show();
+                await Task.Delay(800);
+                var red = Screenshot.Colors[0];
+                o.Demo(new Rect(100, 100, 700, 460), new[]
+                {
+                    new ShotMark { Kind = ShotTool.Rect, A = new Point(140, 170), B = new Point(440, 225), Color = Screenshot.Colors[0], Width = 3 },
+                    new ShotMark { Kind = ShotTool.Arrow, A = new Point(600, 480), B = new Point(450, 260), Color = Screenshot.Colors[1], Width = 4 },
+                    new ShotMark { Kind = ShotTool.Pen, Points = Enumerable.Range(0, 40).Select(i => new Point(160 + i * 8, 420 + Math.Sin(i / 3.0) * 18)).ToList(), Color = Screenshot.Colors[2], Width = 3 },
+                    new ShotMark { Kind = ShotTool.Mosaic, A = new Point(145, 205), B = new Point(640, 250), Color = red, Width = 3 },
+                    new ShotMark { Kind = ShotTool.Text, A = new Point(470, 330), Text = "这里很重要", Color = Screenshot.Colors[3], Width = 3 },
+                });
+                await Task.Delay(800);
+                SaveVisual((FrameworkElement)o.Content, Path.Combine(dir, "overlay.png"));
+                var img = o.ExportForTest();
+                if (img is not null)
+                {
+                    using var fs = File.Create(Path.Combine(dir, "export.png"));
+                    var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(img)); enc.Save(fs);
+                    File.WriteAllText(Path.Combine(dir, "shot.txt"), $"export {img.PixelWidth}x{img.PixelHeight}");
+                }
+            }
+            catch (Exception e) { File.WriteAllText(Path.Combine(dir, "shot-error.txt"), e.ToString()); }
+            app.Shutdown();
+        };
+        app.Run();
+    }
+
+    static void SaveVisual(FrameworkElement el, string file)
+    {
+        el.UpdateLayout();
+        double dpi = VisualTreeHelper.GetDpi(el).PixelsPerInchX;
+        var rtb = new RenderTargetBitmap((int)(el.ActualWidth * dpi / 96), (int)(el.ActualHeight * dpi / 96), dpi, dpi, PixelFormats.Pbgra32);
+        rtb.Render(el);
+        using var fs = File.Create(file);
+        var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(rtb)); enc.Save(fs);
     }
 }

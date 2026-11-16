@@ -111,11 +111,14 @@ public sealed class PopupWindow : Window
         var cleanBtn = Btn("清理", () => { Close(); MainWindow.Show(Page.Cleanup); }, glyph: "");
         var gear = Btn("", () => { Close(); MainWindow.Show(Page.Settings); }, glyph: "");
         var power = Btn("", () => Application.Current.Shutdown(), glyph: "");
+        var shot = Btn("", () => { Close(); Screenshot.Start(250); }, glyph: "\uE722");
         var footer = new Grid();
         footer.ColumnDefinitions.Add(new ColumnDefinition());
         footer.ColumnDefinitions.Add(new ColumnDefinition());
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        shot.Margin = new Thickness(6, 0, 0, 0); Grid.SetColumn(shot, 4); footer.Children.Add(shot);
         cleanBtn.Margin = new Thickness(6, 0, 0, 0); gear.Margin = new Thickness(6, 0, 0, 0); power.Margin = new Thickness(4, 0, 0, 0);
         Grid.SetColumn(cleanBtn, 1); Grid.SetColumn(gear, 2); Grid.SetColumn(power, 3);
         footer.Children.Add(openBtn); footer.Children.Add(cleanBtn); footer.Children.Add(gear); footer.Children.Add(power);

@@ -69,7 +69,7 @@ public sealed class MainWindow : Window
         }
         Group("监控", Page.Overview, Page.Processes);
         Group("空间", Page.Disk, Page.Projects, Page.Cleanup);
-        Group("工具", Page.Typing);
+        Group("工具", Page.Screenshot, Page.Typing);
         var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
         _nav.Children.Add(NavItem(Page.Settings));
         root.Children.Add(side);
@@ -96,6 +96,7 @@ public sealed class MainWindow : Window
         Page.Projects => ("项目", "\uE8B7", Theme.NetOutC),
         Page.Cleanup => ("清理", "\uE74D", Color.FromRgb(237, 92, 140)),
         Page.Typing => ("打字", "\uE765", Theme.MemC),
+        Page.Screenshot => ("截图", "\uE722", Color.FromRgb(64, 178, 217)),
         _ => ("设置", "\uE713", Color.FromRgb(140, 143, 153)),
     };
 
@@ -157,6 +158,7 @@ public sealed class MainWindow : Window
             Page.Processes => new ProcessesPage(),
             Page.Cleanup => new CleanupPage(),
             Page.Typing => new TypingPage(),
+            Page.Screenshot => new ScreenshotPage(),
             _ => new SettingsPage(),
         };
         _page.Margin = new Thickness(24, 20, 24, 24);
@@ -175,6 +177,7 @@ public sealed class MainWindow : Window
         long rec = CleanupModel.Shared.All.Where(i => i.Recommended).Sum(i => i.Size);
         SetBadge(Page.Cleanup, rec > 0 ? Fmt.Bytes(rec) : null);
         SetBadge(Page.Typing, TypingMonitor.Shared.Running ? TypingMonitor.Shared.Today.Total.ToString("N0") : null);
+        SetBadge(Page.Screenshot, st.ShotHotkey == ShotHotkey.None ? null : GlobalHotkey.Title(st.ShotHotkey).Replace(" ", ""));
         SetBadge(Page.Settings, null);
 
         FrameworkElement Meter(string glyph, string title, double v, string value, Color c) =>

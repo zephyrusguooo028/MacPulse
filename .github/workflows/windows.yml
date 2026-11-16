@@ -37,6 +37,15 @@ jobs:
           $p = Start-Process -FilePath .\out\Peekaboo.exe -ArgumentList "--icon-sheet", "$PWD\icons.png" -PassThru
           if (-not $p.WaitForExit(60000)) { $p.Kill(); throw "icon sheet timed out" }
 
+      - name: Screenshot editor demo
+        run: |
+          New-Item -ItemType Directory -Force shot | Out-Null
+          $p = Start-Process -FilePath .\out\Peekaboo.exe -ArgumentList "--shot-demo", "$PWD\shot" -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "shot demo timed out" }
+          Get-ChildItem shot
+          if (Test-Path shot\shot-error.txt) { Get-Content shot\shot-error.txt; throw "shot demo failed" }
+          Get-Content shot\shot.txt
+
       - name: Page screenshots
         run: |
           New-Item -ItemType Directory -Force shots | Out-Null
@@ -59,3 +68,4 @@ jobs:
             windows/Peekaboo/selftest.txt
             windows/Peekaboo/icons.png
             windows/Peekaboo/shots/
+            windows/Peekaboo/shot/

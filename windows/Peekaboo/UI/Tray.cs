@@ -37,6 +37,7 @@ public sealed class TrayController : IDisposable
     {
         var m = new WF.ContextMenuStrip();
         m.Items.Add("打开 Peekaboo", null, (_, _) => MainWindow.Show(Page.Overview));
+        m.Items.Add("截图", null, (_, _) => Screenshot.Start(250));
         m.Items.Add("清理…", null, (_, _) => MainWindow.Show(Page.Cleanup));
         m.Items.Add("设置", null, (_, _) => MainWindow.Show(Page.Settings));
         m.Items.Add(new WF.ToolStripSeparator());

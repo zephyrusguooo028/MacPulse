@@ -16,7 +16,7 @@ public sealed class PopupWindow : Window
 
     public static void Toggle()
     {
-        if (_current is { IsVisible: true }) { _current.Close(); return; }
+        if (_current is { IsVisible: true }) { _current.Close(); _current = null; return; }
         _current = new PopupWindow();
         _current.Show();
         _current.Activate();
@@ -30,7 +30,9 @@ public sealed class PopupWindow : Window
         Background = Theme.Window; FontFamily = Theme.Font;
         BorderBrush = Theme.Line; BorderThickness = new Thickness(1);
         Content = _host;
-        Deactivated += (_, _) => Close();
+        bool closing = false;
+        Closing += (_, _) => closing = true;
+        Deactivated += (_, _) => { if (!closing) Close(); };
         Loaded += (_, _) => { Place(); Native.RoundCorners(this); };
         SystemMonitor.Shared.WantProcesses(true);
         SystemMonitor.Shared.Ticked += Rebuild;

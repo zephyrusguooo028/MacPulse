@@ -107,10 +107,29 @@ public sealed class OverviewPage : PageView
 
     static FrameworkElement Lines(params (string label, string value)[] rows)
     {
-        var s = V(6);
-        foreach (var (l, v) in rows) s.Children.Add(Row(T(l, 12.5, color: Theme.Secondary), T(v, 12.5)));
-        s.MinWidth = 120;
-        return s;
+        var g = new Grid { MinWidth = 120 };
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (int i = 0; i < rows.Length; i++)
+        {
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var l = T(rows[i].label, 12.5, color: Theme.Secondary); l.Margin = new Thickness(0, i == 0 ? 0 : 6, 12, 0);
+            var v = T(rows[i].value, 12.5, FontWeights.Medium); v.Margin = new Thickness(0, i == 0 ? 0 : 6, 0, 0); v.HorizontalAlignment = HorizontalAlignment.Right;
+            Grid.SetRow(l, i); Grid.SetRow(v, i); Grid.SetColumn(v, 1);
+            g.Children.Add(l); g.Children.Add(v);
+        }
+        return g;
+    }
+
+    /// Ring on the left, details filling the rest of the tile.
+    static FrameworkElement RingAnd(FrameworkElement ring, FrameworkElement details)
+    {
+        var d = new DockPanel();
+        DockPanel.SetDock(ring, Dock.Left);
+        ring.Margin = new Thickness(0, 0, 14, 0);
+        details.VerticalAlignment = VerticalAlignment.Center;
+        d.Children.Add(ring); d.Children.Add(details);
+        return d;
     }
 
     static TextBlock WrapT(string text) { var t = T(text, 12, color: Theme.Secondary); t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; return t; }

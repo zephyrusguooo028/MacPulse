@@ -9,7 +9,7 @@ namespace Peekaboo;
 public sealed class DiskPage : PageView
 {
     DiskNode? _hovered;
-    readonly TextBlock _hoverLine = T("", 12.5, color: Theme.Secondary);
+    TextBlock _hoverLine = T("", 12.5, color: Theme.Secondary);
     DiskModel M => DiskModel.Shared;
 
     public override void Shown() { M.Changed += Build; Build(); }
@@ -17,6 +17,7 @@ public sealed class DiskPage : PageView
 
     void Build()
     {
+        _hoverLine = T("", 12.5, color: Theme.Secondary);
         var d = SystemMonitor.Shared.Disk;
         var actions = H(8);
         if (M.Scanning) actions.Children.Add(Btn("停止", M.Cancel));

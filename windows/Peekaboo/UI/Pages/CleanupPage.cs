@@ -59,8 +59,9 @@ public sealed class CleanupPage : PageView
                      color: _permanent ? Theme.B(Theme.DangerC) : Theme.Secondary);
         var action = Card("已选择", "", V(10,
             Row(H(8, T(Fmt.Bytes(M.SelectedSize), 32, FontWeights.Bold), T($"{M.SelectedItems.Count()} 项", 13, color: Theme.Secondary)), go),
-            Row(mode, H(6, Btn("全选推荐", () => { M.Selected = M.All.Where(i => i.Recommended).Select(i => i.Path).ToHashSet(StringComparer.OrdinalIgnoreCase); Build(); }),
-                           Btn("全不选", () => { M.Selected.Clear(); Build(); }))),
+            mode,
+            H(6, Btn("全选推荐", () => { M.Selected = M.All.Where(i => i.Recommended).Select(i => i.Path).ToHashSet(StringComparer.OrdinalIgnoreCase); Build(); }),
+                           Btn("全不选", () => { M.Selected.Clear(); Build(); })),
             note));
 
         var empty = Btn("清空回收站…", () =>

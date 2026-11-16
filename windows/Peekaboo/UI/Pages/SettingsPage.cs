@@ -84,7 +84,7 @@ public sealed class SettingsPage : PageView
             };
             var dot = new Border { Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Background = fill, BorderBrush = S.Theme == t ? Theme.Text : Theme.Line, BorderThickness = new Thickness(S.Theme == t ? 2 : 1), HorizontalAlignment = HorizontalAlignment.Center };
             var cap = T(Theme.ChoiceTitle(t), 10.5, color: Theme.Secondary); cap.HorizontalAlignment = HorizontalAlignment.Center;
-            var sw = V(4, dot, cap); sw.Cursor = Cursors.Hand; sw.Background = Brushes.Transparent;
+            var sw = V(4, dot, cap); sw.Width = 54; sw.Cursor = Cursors.Hand; sw.Background = Brushes.Transparent;
             sw.MouseLeftButtonUp += (_, _) => { S.Theme = tc; Save(); MainWindow.Instance?.Navigate(Page.Settings); };
             swatches.Children.Add(sw);
         }

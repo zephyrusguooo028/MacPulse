@@ -9,6 +9,23 @@ using Path = System.Windows.Shapes.Path;
 namespace Peekaboo;
 
 /// Small builder helpers so pages can be written in plain C#.
+/// StackPanel that puts `Spacing` between children, however they are added.
+public sealed class SpacedStack : StackPanel
+{
+    public double Spacing { get; set; }
+
+    protected override void OnVisualChildrenChanged(DependencyObject added, DependencyObject removed)
+    {
+        base.OnVisualChildrenChanged(added, removed);
+        if (added is FrameworkElement fe && Children.Count > 1)
+        {
+            var m = fe.Margin;
+            fe.Margin = Orientation == Orientation.Vertical ? new Thickness(m.Left, m.Top + Spacing, m.Right, m.Bottom)
+                                                            : new Thickness(m.Left + Spacing, m.Top, m.Right, m.Bottom);
+        }
+    }
+}
+
 public static class UIX
 {
     public static TextBlock T(string text, double size = 13, FontWeight? weight = null, Brush? color = null)
@@ -22,14 +39,8 @@ public static class UIX
 
     static StackPanel Stack(Orientation o, double spacing, UIElement[] kids)
     {
-        var s = new StackPanel { Orientation = o };
-        for (int i = 0; i < kids.Length; i++)
-        {
-            if (kids[i] is FrameworkElement fe && i > 0)
-                fe.Margin = o == Orientation.Vertical ? new Thickness(fe.Margin.Left, fe.Margin.Top + spacing, fe.Margin.Right, fe.Margin.Bottom)
-                                                      : new Thickness(fe.Margin.Left + spacing, fe.Margin.Top, fe.Margin.Right, fe.Margin.Bottom);
-            s.Children.Add(kids[i]);
-        }
+        var s = new SpacedStack { Orientation = o, Spacing = spacing };
+        foreach (var k in kids) s.Children.Add(k);
         return s;
     }
 
@@ -39,16 +50,16 @@ public static class UIX
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        if (left is FrameworkElement lf && lf.VerticalAlignment == VerticalAlignment.Stretch) lf.VerticalAlignment = VerticalAlignment.Center;
         g.Children.Add(left);
+        if (right is FrameworkElement rf && rf.VerticalAlignment == VerticalAlignment.Stretch) rf.VerticalAlignment = VerticalAlignment.Center;
         if (right is not null) { Grid.SetColumn(right, 1); if (right is FrameworkElement fe) fe.Margin = new Thickness(gap, 0, 0, 0); g.Children.Add(right); }
         return g;
     }
 
     public static Border Card(string title, string? glyph, UIElement content, UIElement? trailing = null)
     {
-        var header = H(6);
-        if (glyph is not null) header.Children.Add(Glyph(glyph, 14));
-        header.Children.Add(T(title, 14, FontWeights.SemiBold));
+        var header = glyph is not null ? H(8, Glyph(glyph, 14), T(title, 14, FontWeights.SemiBold)) : H(0, T(title, 14, FontWeights.SemiBold));
         var body = V(12, Row(header, trailing), content);
         return Panel(body);
     }
@@ -65,12 +76,14 @@ public static class UIX
 
     public static Button Btn(string text, Action onClick, bool primary = false, string? glyph = null)
     {
-        var content = H(6);
-        if (glyph is not null) content.Children.Add(Glyph(glyph, 12, primary ? Theme.OnAccent : Theme.Text));
-        if (text.Length > 0) content.Children.Add(T(text, 13, FontWeights.Medium, primary ? Theme.OnAccent : Theme.Text));
+        var parts = new List<UIElement>();
+        if (glyph is not null) parts.Add(Glyph(glyph, 12, primary ? Theme.OnAccent : Theme.Text));
+        if (text.Length > 0) parts.Add(T(text, 13, FontWeights.Medium, primary ? Theme.OnAccent : Theme.Text));
+        var content = H(6, parts.ToArray());
         var b = new Button
         {
             Content = content,
+            VerticalAlignment = VerticalAlignment.Center,
             Padding = new Thickness(12, 6, 12, 6),
             Cursor = Cursors.Hand,
             Background = primary ? Theme.AccentBrush : Theme.CardAlt,

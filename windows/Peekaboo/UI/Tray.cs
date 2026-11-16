@@ -36,6 +36,12 @@ public sealed class TrayController : IDisposable
     WF.ContextMenuStrip BuildMenu()
     {
         var m = new WF.ContextMenuStrip();
+        if (Theme.Dark)
+        {
+            m.Renderer = new WF.ToolStripProfessionalRenderer(new DarkMenuColors()) { RoundedEdges = true };
+            m.BackColor = SD.Color.FromArgb(43, 43, 43);
+            m.ForeColor = SD.Color.White;
+        }
         m.Items.Add(L("打开 Peekaboo", "Open Peekaboo"), null, (_, _) => MainWindow.Show(Page.Overview));
         m.Items.Add(L("截图", "Screenshot"), null, (_, _) => Screenshot.Start(250));
         m.Items.Add(L("清理…", "Clean up…"), null, (_, _) => MainWindow.Show(Page.Cleanup));
@@ -170,4 +176,21 @@ public sealed class TrayController : IDisposable
         if (_main is not null) { _main.Visible = false; _main.Dispose(); }
         foreach (var n in _metricIcons.Values) { n.Visible = false; n.Dispose(); }
     }
+}
+
+/// Dark colours for the WinForms tray menu (it ignores the WPF theme).
+sealed class DarkMenuColors : WF.ProfessionalColorTable
+{
+    static readonly SD.Color Bg = SD.Color.FromArgb(43, 43, 43), Hover = SD.Color.FromArgb(62, 62, 62), Line = SD.Color.FromArgb(70, 70, 70);
+    public override SD.Color ToolStripDropDownBackground => Bg;
+    public override SD.Color ImageMarginGradientBegin => Bg;
+    public override SD.Color ImageMarginGradientMiddle => Bg;
+    public override SD.Color ImageMarginGradientEnd => Bg;
+    public override SD.Color MenuBorder => Line;
+    public override SD.Color MenuItemBorder => Hover;
+    public override SD.Color MenuItemSelected => Hover;
+    public override SD.Color MenuItemSelectedGradientBegin => Hover;
+    public override SD.Color MenuItemSelectedGradientEnd => Hover;
+    public override SD.Color SeparatorDark => Line;
+    public override SD.Color SeparatorLight => Line;
 }

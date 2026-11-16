@@ -21,6 +21,9 @@ public static class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Startup += (_, _) =>
         {
+            ThemeStyles.Install(app);
+            ThemeStyles.ThemeChanged += () => { MainWindow.ThemeChanged(); TrayController.Shared.RebuildMenus(); };
+            Settings.Changed += () => ThemeStyles.Apply(app);   // accent colour choice
             var m = SystemMonitor.Shared;
             m.Ticked += Alerts.Check;
             m.Start();
@@ -29,6 +32,7 @@ public static class Program
             Screenshot.ApplyHotkey();
             ClipboardService.Start();
             DesktopWidget.Start();
+            Updater.Start();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };
@@ -191,6 +195,7 @@ static class ShotDemo
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Startup += async (_, _) =>
         {
+            ThemeStyles.Install(app);
             try
             {
                 var b = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;

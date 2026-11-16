@@ -120,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TypingMonitor.shared.apply()
             ScreenshotController.shared.applyHotkey()
             ClipboardService.startIfEnabled()
+            Updater.shared.start()
             DesktopWidget.startIfEnabled()
             AlertManager.shared.setup()
             if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {

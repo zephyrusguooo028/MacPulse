@@ -149,7 +149,7 @@ private struct SidebarRow: View {
         case .duplicates: return DuplicatesView.badge.map { ($0, false) }
         case .uninstall: return nil
         case .clipboard: return ClipboardView.badge.map { ($0, false) }
-        case .settings: return nil
+        case .settings: return Updater.shared.hasUpdate ? (L("新版本", "Update"), true) : nil
         }
     }
 }

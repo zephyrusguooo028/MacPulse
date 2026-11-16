@@ -10,7 +10,7 @@ struct SettingsView: View {
         @Bindable var s = app.settings
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: L("设置", "Settings"), subtitle: "Peekaboo 1.0") { EmptyView() }
+                PageHeader(title: L("设置", "Settings"), subtitle: "Peekaboo \(Updater.shared.current)") { EmptyView() }
 
                 Card(L("语言", "Language"), symbol: "globe") {
                     Picker(L("界面语言", "Interface language"), selection: $s.language) {
@@ -165,6 +165,8 @@ struct SettingsView: View {
                 pathList(title: L("项目目录", "Project folders"), symbol: "folder", note: L("在这些目录里自动找开发项目（最多往下找 4 层）。", "Development projects are found automatically in these folders (up to 4 levels deep)."), paths: $s.projectRoots)
                 pathList(title: L("白名单", "Whitelist"), symbol: "lock.shield", note: L("这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", "These locations are never cleaned. You can also right-click any list item and choose “Add to whitelist”."), paths: $s.whitelist)
 
+                UpdateCard()
+
                 Card(L("权限", "Permissions"), symbol: "lock.shield") {
                     HStack {
                         Text(L("截图、打字统计和自动粘贴需要系统权限。在这里一次看清每项的状态并去授权。",
@@ -179,7 +181,7 @@ struct SettingsView: View {
                 WidgetSettingsCard()
 
                 Card(L("关于", "About"), symbol: "info.circle") {
-                    Text(L("Peekaboo 只在本机读取系统信息，不联网、不上传任何数据。清理默认移到废纸篓，并且永远不碰系统目录和用户目录之外的文件。", "Peekaboo reads system information locally only. It never goes online or uploads any data. Cleanup moves items to the Trash by default and never touches system folders or files outside your home folder."))
+                    Text(L("Peekaboo 只在本机读取系统信息，不上传任何数据；唯一的联网是检查更新（可关闭）。清理默认移到废纸篓，并且永远不碰系统目录和用户目录之外的文件。", "Peekaboo reads system information locally and never uploads any data; the only network access is the optional update check. Cleanup moves items to the Trash by default and never touches system folders or files outside your home folder."))
                         .font(.callout).foregroundStyle(.secondary)
                     Text(L("数据保存在 \(Paths.support.tildePath)", "Data is stored in \(Paths.support.tildePath)")).font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
                 }
@@ -219,6 +221,48 @@ struct SettingsView: View {
         p.directoryURL = Paths.home
         if p.runModal() == .OK {
             for u in p.urls where !paths.wrappedValue.contains(u.tildePath) { paths.wrappedValue.append(u.tildePath) }
+        }
+    }
+}
+
+private struct UpdateCard: View {
+    private let u = Updater.shared
+
+    var body: some View {
+        Card(L("更新", "Updates"), symbol: "arrow.down.circle") {
+            HStack {
+                Text(L("当前版本 \(u.current)", "Version \(u.current)"))
+                Spacer()
+                Toggle(L("自动检查更新", "Check automatically"), isOn: Binding(get: { u.autoCheck }, set: { u.autoCheck = $0 }))
+                    .toggleStyle(.switch).controlSize(.small)
+            }
+            switch u.state {
+            case .idle, .upToDate, .failed:
+                HStack {
+                    Button(L("检查更新", "Check for updates")) { Task { await u.check() } }
+                    if case .upToDate = u.state { Label(L("已经是最新版本", "You're up to date"), systemImage: "checkmark.circle").foregroundStyle(Palette.disk) }
+                    if case .failed(let msg) = u.state { Text(msg).foregroundStyle(Palette.danger).font(.caption) }
+                    Spacer()
+                    if let d = u.lastCheck { Text(L("上次检查 \(Fmt.relative(d))", "Last checked \(Fmt.relative(d))")).font(.caption).foregroundStyle(.secondary) }
+                }
+            case .checking:
+                HStack { ProgressView().controlSize(.small); Text(L("正在检查…", "Checking…")) }
+            case .available(let v, let notes):
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(L("有新版本 \(v)", "Version \(v) is available"), systemImage: "sparkles").font(.headline).foregroundStyle(Palette.theme)
+                    if !notes.isEmpty { Text(notes).font(.caption).foregroundStyle(.secondary).lineLimit(8) }
+                    Button(L("下载并安装", "Download and install")) { u.install() }.buttonStyle(.borderedProminent)
+                    Text(L("会自动退出、替换并重新打开 Peekaboo，设置和权限都会保留。", "Peekaboo quits, replaces itself and reopens; settings and permissions are kept."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            case .downloading(let p):
+                ProgressView(value: p) { Text(L("正在下载…", "Downloading…")) }
+            case .installing:
+                HStack { ProgressView().controlSize(.small); Text(L("正在安装，马上重新打开…", "Installing, reopening shortly…")) }
+            }
+            Text(L("检查更新时只访问 GitHub 上的公开版本信息，不上传任何数据。关掉自动检查后 Peekaboo 完全不联网。",
+                   "Update checks only read public release info from GitHub and send no data. With automatic checks off, Peekaboo never goes online."))
+                .font(.caption).foregroundStyle(.tertiary)
         }
     }
 }

@@ -73,7 +73,7 @@ public sealed class MemoryReading
     public double UsedFraction => Total > 0 ? (double)Used / Total : 0;
     /// 1 normal, 2 elevated, 4 critical — same scale as the macOS build.
     public int PressureLevel => UsedFraction >= 0.92 ? 4 : UsedFraction >= 0.8 ? 2 : 1;
-    public string PressureText => PressureLevel switch { 4 => "紧张", 2 => "偏高", _ => "正常" };
+    public string PressureText => PressureLevel switch { 4 => L("紧张", "Critical"), 2 => L("偏高", "Elevated"), _ => L("正常", "Normal") };
 }
 
 internal static class MemoryReader

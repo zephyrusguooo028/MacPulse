@@ -4,12 +4,12 @@ public enum ArtifactKind { Dependency, Build, Cache }
 
 public sealed record Artifact(string Path, ArtifactKind Kind, long Size, bool Safe)
 {
-    public string KindText => Kind switch { ArtifactKind.Dependency => "依赖", ArtifactKind.Build => "构建产物", _ => "缓存" };
+    public string KindText => Kind switch { ArtifactKind.Dependency => L("依赖", "Dependency"), ArtifactKind.Build => L("构建产物", "Build output"), _ => L("缓存", "Cache") };
     public string Hint => Kind switch
     {
-        ArtifactKind.Dependency => "重新安装依赖即可恢复（npm install 等）",
-        ArtifactKind.Build => "重新构建即可生成",
-        _ => "工具缓存，会自动重建",
+        ArtifactKind.Dependency => L("重新安装依赖即可恢复（npm install 等）", "Reinstall dependencies to restore (npm install, etc.)"),
+        ArtifactKind.Build => L("重新构建即可生成", "Rebuild to regenerate"),
+        _ => L("工具缓存，会自动重建", "Tool cache, rebuilt automatically"),
     };
 }
 

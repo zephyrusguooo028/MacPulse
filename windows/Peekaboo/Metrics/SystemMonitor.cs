@@ -128,12 +128,12 @@ public sealed class SystemMonitor
     public string StatusSentence()
     {
         var s = Settings.Shared;
-        if (Memory.PressureLevel >= 4) return "内存压力很大，可以关掉一些应用";
-        if (Disk.Total > 0 && Disk.Free < s.AlertDiskGB * 1073741824L) return $"{Disk.Name} 只剩 {Fmt.Bytes(Disk.Free)}，去清理一下吧";
+        if (Memory.PressureLevel >= 4) return L("内存压力很大，可以关掉一些应用", "Memory pressure is high, try closing some apps");
+        if (Disk.Total > 0 && Disk.Free < s.AlertDiskGB * 1073741824L) return L($"{Disk.Name} 只剩 {Fmt.Bytes(Disk.Free)}，去清理一下吧", $"Only {Fmt.Bytes(Disk.Free)} left on {Disk.Name}, time to clean up");
         var cpu = Fmt.Pct(Cpu.Total);
-        if (Cpu.Total > 0.9) return $"CPU 满载中 {cpu}";
-        if (Cpu.Total > 0.6) return $"有点忙，CPU {cpu}";
-        if (Cpu.Total < 0.08) return $"很清闲，CPU {cpu}";
-        return $"运行正常，CPU {cpu}";
+        if (Cpu.Total > 0.9) return L($"CPU 满载中 {cpu}", $"CPU maxed out at {cpu}");
+        if (Cpu.Total > 0.6) return L($"有点忙，CPU {cpu}", $"A bit busy, CPU {cpu}");
+        if (Cpu.Total < 0.08) return L($"很清闲，CPU {cpu}", $"Nice and idle, CPU {cpu}");
+        return L($"运行正常，CPU {cpu}", $"Running normally, CPU {cpu}");
     }
 }

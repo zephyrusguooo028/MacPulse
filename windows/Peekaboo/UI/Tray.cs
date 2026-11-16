@@ -36,13 +36,21 @@ public sealed class TrayController : IDisposable
     WF.ContextMenuStrip BuildMenu()
     {
         var m = new WF.ContextMenuStrip();
-        m.Items.Add("打开 Peekaboo", null, (_, _) => MainWindow.Show(Page.Overview));
-        m.Items.Add("截图", null, (_, _) => Screenshot.Start(250));
-        m.Items.Add("清理…", null, (_, _) => MainWindow.Show(Page.Cleanup));
-        m.Items.Add("设置", null, (_, _) => MainWindow.Show(Page.Settings));
+        m.Items.Add(L("打开 Peekaboo", "Open Peekaboo"), null, (_, _) => MainWindow.Show(Page.Overview));
+        m.Items.Add(L("截图", "Screenshot"), null, (_, _) => Screenshot.Start(250));
+        m.Items.Add(L("清理…", "Clean up…"), null, (_, _) => MainWindow.Show(Page.Cleanup));
+        m.Items.Add(L("设置", "Settings"), null, (_, _) => MainWindow.Show(Page.Settings));
         m.Items.Add(new WF.ToolStripSeparator());
-        m.Items.Add("退出", null, (_, _) => System.Windows.Application.Current.Shutdown());
+        m.Items.Add(L("退出", "Quit"), null, (_, _) => System.Windows.Application.Current.Shutdown());
         return m;
+    }
+
+    /// Rebuilds the right-click menus, e.g. after the UI language changes.
+    public void RebuildMenus()
+    {
+        if (_main is not null) { var old = _main.ContextMenuStrip; _main.ContextMenuStrip = BuildMenu(); old?.Dispose(); }
+        foreach (var ni in _metricIcons.Values) { var old = ni.ContextMenuStrip; ni.ContextMenuStrip = BuildMenu(); old?.Dispose(); }
+        Refresh();
     }
 
     public void Viewer(bool on) => _viewers = Math.Max(0, _viewers + (on ? 1 : -1));
@@ -95,7 +103,7 @@ public sealed class TrayController : IDisposable
         var m = SystemMonitor.Shared;
         var s = Settings.Shared;
         UpdateMainIcon();
-        var tip = $"Peekaboo · CPU {Fmt.Pct(m.Cpu.Total)} · 内存 {Fmt.Pct(m.Memory.UsedFraction)}\n{m.Disk.Name} 剩 {Fmt.Bytes(m.Disk.Free)} · ↓{Fmt.Short(m.NetIn)} ↑{Fmt.Short(m.NetOut)}";
+        var tip = L($"Peekaboo · CPU {Fmt.Pct(m.Cpu.Total)} · 内存 {Fmt.Pct(m.Memory.UsedFraction)}\n{m.Disk.Name} 剩 {Fmt.Bytes(m.Disk.Free)} · ↓{Fmt.Short(m.NetIn)} ↑{Fmt.Short(m.NetOut)}", $"Peekaboo · CPU {Fmt.Pct(m.Cpu.Total)} · Mem {Fmt.Pct(m.Memory.UsedFraction)}\n{m.Disk.Name} {Fmt.Bytes(m.Disk.Free)} free · ↓{Fmt.Short(m.NetIn)} ↑{Fmt.Short(m.NetOut)}");
         _main.Text = tip.Length > 127 ? tip[..127] : tip;
 
         foreach (var metric in Enum.GetValues<TrayMetric>())
@@ -136,13 +144,13 @@ public sealed class TrayController : IDisposable
         return metric switch
         {
             TrayMetric.Cpu => (Math.Min(99, (int)Math.Round(m.Cpu.Total * 100)).ToString(), C(Theme.CpuC), $"CPU {Fmt.Pct(m.Cpu.Total)}"),
-            TrayMetric.Memory => (Math.Min(99, (int)Math.Round(m.Memory.UsedFraction * 100)).ToString(), C(Theme.MemC), $"内存 {Fmt.Pct(m.Memory.UsedFraction)}（{Fmt.Bytes(m.Memory.Used)} / {Fmt.Bytes(m.Memory.Total)}）"),
-            TrayMetric.Disk => (((int)(m.Disk.Free / 1073741824.0)).ToString(), C(Theme.DiskC), $"{m.Disk.Name} 剩余 {Fmt.Bytes(m.Disk.Free)}"),
-            TrayMetric.Network => (Fmt.Short(m.NetIn).Replace("K", "k"), C(Theme.NetInC), $"下载 {Fmt.Rate(m.NetIn)} · 上传 {Fmt.Rate(m.NetOut)}"),
-            TrayMetric.Gpu => (m.Gpu is { } g ? Math.Min(99, (int)Math.Round(g * 100)).ToString() : "–", C(Theme.WarnC), $"GPU {(m.Gpu is { } g2 ? Fmt.Pct(g2) : "读不到")}"),
-            TrayMetric.Battery => (m.Battery is { } b ? Math.Min(99, (int)Math.Round(b.Percent * 100)).ToString() : "–", SD.Color.FromArgb(120, 200, 80), m.Battery is { } b2 ? $"电池 {Fmt.Pct(b2.Percent)}{(b2.Charging ? " 充电中" : "")}" : "没有电池"),
-            TrayMetric.Typing => (TypingMonitor.Shared.Running ? Compact(TypingMonitor.Shared.Today.Total) : "–", C(Theme.MemC), $"今天打字 {TypingMonitor.Shared.Today.Total} 次"),
-            _ => ("", C(Theme.CpuC), "CPU 走势"),
+            TrayMetric.Memory => (Math.Min(99, (int)Math.Round(m.Memory.UsedFraction * 100)).ToString(), C(Theme.MemC), L($"内存 {Fmt.Pct(m.Memory.UsedFraction)}（{Fmt.Bytes(m.Memory.Used)} / {Fmt.Bytes(m.Memory.Total)}）", $"Memory {Fmt.Pct(m.Memory.UsedFraction)} ({Fmt.Bytes(m.Memory.Used)} / {Fmt.Bytes(m.Memory.Total)})")),
+            TrayMetric.Disk => (((int)(m.Disk.Free / 1073741824.0)).ToString(), C(Theme.DiskC), L($"{m.Disk.Name} 剩余 {Fmt.Bytes(m.Disk.Free)}", $"{m.Disk.Name} {Fmt.Bytes(m.Disk.Free)} free")),
+            TrayMetric.Network => (Fmt.Short(m.NetIn).Replace("K", "k"), C(Theme.NetInC), L($"下载 {Fmt.Rate(m.NetIn)} · 上传 {Fmt.Rate(m.NetOut)}", $"Down {Fmt.Rate(m.NetIn)} · Up {Fmt.Rate(m.NetOut)}")),
+            TrayMetric.Gpu => (m.Gpu is { } g ? Math.Min(99, (int)Math.Round(g * 100)).ToString() : "–", C(Theme.WarnC), $"GPU {(m.Gpu is { } g2 ? Fmt.Pct(g2) : L("读不到", "unavailable"))}"),
+            TrayMetric.Battery => (m.Battery is { } b ? Math.Min(99, (int)Math.Round(b.Percent * 100)).ToString() : "–", SD.Color.FromArgb(120, 200, 80), m.Battery is { } b2 ? L($"电池 {Fmt.Pct(b2.Percent)}{(b2.Charging ? " 充电中" : "")}", $"Battery {Fmt.Pct(b2.Percent)}{(b2.Charging ? " charging" : "")}") : L("没有电池", "No battery")),
+            TrayMetric.Typing => (TypingMonitor.Shared.Running ? Compact(TypingMonitor.Shared.Today.Total) : "–", C(Theme.MemC), L($"今天打字 {TypingMonitor.Shared.Today.Total} 次", $"{TypingMonitor.Shared.Today.Total} keystrokes today")),
+            _ => ("", C(Theme.CpuC), L("CPU 走势", "CPU trend")),
         };
     }
 

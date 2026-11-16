@@ -84,31 +84,31 @@ public sealed class PopupWindow : Window
             H(10,
                 new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Background = Theme.AccentSoftBrush, Child = _icon },
                 V(1, T("Peekaboo", 14, FontWeights.SemiBold), T(m.StatusSentence(), 11.5, color: Theme.Secondary))),
-            T("已运行 " + Fmt.Uptime(), 11, color: Theme.Tertiary));
+            T(L("已运行 ", "Up ") + Fmt.Uptime(), 11, color: Theme.Tertiary));
 
         FrameworkElement MetricRow(string glyph, string name, double v, string value, Color c) =>
-            Row(H(10, Glyph(glyph, 13), Fixed(T(name, 12.5), 34)), Fixed(T(value, 12.5, FontWeights.SemiBold), 70, right: true)) is Grid g
+            Row(H(10, Glyph(glyph, 13), Fixed(T(name, 12.5), English ? 58 : 34)), Fixed(T(value, 12.5, FontWeights.SemiBold), 70, right: true)) is Grid g
                 ? WithBar(g, v, c) : new Grid();
 
         var metrics = V(10,
             MetricRow("", "CPU", m.Cpu.Total, Fmt.Pct(m.Cpu.Total), Theme.Load(m.Cpu.Total)),
-            MetricRow("", "内存", m.Memory.UsedFraction, Fmt.Pct(m.Memory.UsedFraction), m.Memory.PressureLevel >= 4 ? Theme.DangerC : Theme.MemC),
-            MetricRow("", "磁盘", m.Disk.UsedFraction, "剩 " + Fmt.DiskShort(m.Disk.Free), m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC),
-            Row(H(10, Glyph("", 13), Fixed(T("网络", 12.5), 34), T("↓ " + Fmt.Rate(m.NetIn), 12.5, color: Theme.B(Theme.NetInC))),
+            MetricRow("", L("内存", "Mem"), m.Memory.UsedFraction, Fmt.Pct(m.Memory.UsedFraction), m.Memory.PressureLevel >= 4 ? Theme.DangerC : Theme.MemC),
+            MetricRow("", L("磁盘", "Disk"), m.Disk.UsedFraction, L("剩 ", "") + Fmt.DiskShort(m.Disk.Free) + L("", " free"), m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC),
+            Row(H(10, Glyph("", 13), Fixed(T(L("网络", "Net"), 12.5), English ? 58 : 34), T("↓ " + Fmt.Rate(m.NetIn), 12.5, color: Theme.B(Theme.NetInC))),
                 T("↑ " + Fmt.Rate(m.NetOut), 12.5, color: Theme.B(Theme.NetOutC))),
-            Row(H(10, Glyph("", 13), Fixed(T("其他", 12.5), 34), T("GPU " + (m.Gpu is { } g ? Fmt.Pct(g) : "—"), 12.5)),
-                T(m.Battery is { } b ? $"电池 {Fmt.Pct(b.Percent)}{(b.Charging ? " ⚡" : "")}" : "", 12.5)));
+            Row(H(10, Glyph("", 13), Fixed(T(L("其他", "Other"), 12.5), English ? 58 : 34), T("GPU " + (m.Gpu is { } g ? Fmt.Pct(g) : "—"), 12.5)),
+                T(m.Battery is { } b ? L($"电池 {Fmt.Pct(b.Percent)}{(b.Charging ? " ⚡" : "")}", $"Battery {Fmt.Pct(b.Percent)}{(b.Charging ? " ⚡" : "")}") : "", 12.5)));
 
-        var apps = V(8, T("占用最高", 11.5, FontWeights.Medium, Theme.Secondary));
+        var apps = V(8, T(L("占用最高", "Top apps"), 11.5, FontWeights.Medium, Theme.Secondary));
         var top = m.TopByCpu.Take(3).ToList();
-        if (top.Count == 0) apps.Children.Add(T("读取中…", 12, color: Theme.Tertiary));
+        if (top.Count == 0) apps.Children.Add(T(L("读取中…", "Loading…"), 12, color: Theme.Tertiary));
         foreach (var a in top)
             apps.Children.Add(Row(H(8, AppIcon(a.Path), T(a.Name, 12.5)),
                 H(10, T(Fmt.Bytes(a.Memory), 12, color: Theme.Secondary),
                       Fixed(T(Fmt.Pct(a.Cpu), 12.5, FontWeights.Medium, a.Cpu > 0.8 ? Theme.B(Theme.DangerC) : Theme.Text), 40, right: true))));
 
-        var openBtn = Btn("打开主窗口", () => { Close(); MainWindow.Show(Page.Overview); }, primary: true);
-        var cleanBtn = Btn("清理", () => { Close(); MainWindow.Show(Page.Cleanup); }, glyph: "");
+        var openBtn = Btn(L("打开主窗口", "Open main window"), () => { Close(); MainWindow.Show(Page.Overview); }, primary: true);
+        var cleanBtn = Btn(L("清理", "Clean"), () => { Close(); MainWindow.Show(Page.Cleanup); }, glyph: "");
         var gear = Btn("", () => { Close(); MainWindow.Show(Page.Settings); }, glyph: "");
         var power = Btn("", () => Application.Current.Shutdown(), glyph: "");
         var shot = Btn("", () => { Close(); Screenshot.Start(250); }, glyph: "\uE722");

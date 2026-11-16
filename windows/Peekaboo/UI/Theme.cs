@@ -39,8 +39,8 @@ public static class Theme
 
     public static string ChoiceTitle(ThemeChoice t) => t switch
     {
-        ThemeChoice.System => "跟随系统", ThemeChoice.Mono => "黑白", ThemeChoice.Load => "跟随负载", ThemeChoice.Pink => "樱花粉",
-        ThemeChoice.Mint => "薄荷绿", ThemeChoice.Purple => "葡萄紫", ThemeChoice.Orange => "橘子橙", _ => "天空蓝",
+        ThemeChoice.System => L("跟随系统", "System"), ThemeChoice.Mono => L("黑白", "Mono"), ThemeChoice.Load => L("跟随负载", "By load"), ThemeChoice.Pink => L("樱花粉", "Sakura"),
+        ThemeChoice.Mint => L("薄荷绿", "Mint"), ThemeChoice.Purple => L("葡萄紫", "Grape"), ThemeChoice.Orange => L("橘子橙", "Orange"), _ => L("天空蓝", "Sky"),
     };
 
     public static Color ChoiceColor(ThemeChoice t, double cpu) => t switch

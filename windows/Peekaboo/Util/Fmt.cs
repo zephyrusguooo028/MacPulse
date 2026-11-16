@@ -53,12 +53,12 @@ internal static class Fmt
     {
         if (d is null) return "—";
         var s = DateTime.Now - d.Value;
-        if (s.TotalMinutes < 1) return "刚刚";
-        if (s.TotalHours < 1) return $"{(int)s.TotalMinutes} 分钟前";
-        if (s.TotalDays < 1) return $"{(int)s.TotalHours} 小时前";
-        if (s.TotalDays < 30) return $"{(int)s.TotalDays} 天前";
-        if (s.TotalDays < 365) return $"{(int)(s.TotalDays / 30)} 个月前";
-        return $"{(int)(s.TotalDays / 365)} 年前";
+        if (s.TotalMinutes < 1) return L("刚刚", "just now");
+        if (s.TotalHours < 1) return L($"{(int)s.TotalMinutes} 分钟前", $"{(int)s.TotalMinutes} min ago");
+        if (s.TotalDays < 1) return L($"{(int)s.TotalHours} 小时前", $"{(int)s.TotalHours} h ago");
+        if (s.TotalDays < 30) return L($"{(int)s.TotalDays} 天前", $"{(int)s.TotalDays} days ago");
+        if (s.TotalDays < 365) return L($"{(int)(s.TotalDays / 30)} 个月前", $"{(int)(s.TotalDays / 30)} months ago");
+        return L($"{(int)(s.TotalDays / 365)} 年前", $"{(int)(s.TotalDays / 365)} years ago");
     }
 
     public static int DaysAgo(DateTime? d) => d is null ? 0 : (int)(DateTime.Now - d.Value).TotalDays;
@@ -66,9 +66,9 @@ internal static class Fmt
     public static string Uptime()
     {
         var t = TimeSpan.FromMilliseconds(Native.GetTickCount64());
-        if (t.TotalDays >= 1) return $"{(int)t.TotalDays} 天 {t.Hours} 小时";
-        if (t.TotalHours >= 1) return $"{t.Hours} 小时 {t.Minutes} 分";
-        return $"{t.Minutes} 分钟";
+        if (t.TotalDays >= 1) return L($"{(int)t.TotalDays} 天 {t.Hours} 小时", $"{(int)t.TotalDays} d {t.Hours} h");
+        if (t.TotalHours >= 1) return L($"{t.Hours} 小时 {t.Minutes} 分", $"{t.Hours} h {t.Minutes} min");
+        return L($"{t.Minutes} 分钟", $"{t.Minutes} min");
     }
 
     public static string Tilde(string path)

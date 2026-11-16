@@ -62,16 +62,7 @@ public sealed class MainWindow : Window
         DockPanel.SetDock(_footer, Dock.Bottom);
         side.Children.Add(_footer);
         side.Children.Add(_nav);
-        void Group(string title, params Page[] pages)
-        {
-            if (title.Length > 0) { var h = T(title, 11, FontWeights.SemiBold, Theme.Tertiary); h.Margin = new Thickness(10, 10, 0, 4); _nav.Children.Add(h); }
-            foreach (var p in pages) _nav.Children.Add(NavItem(p));
-        }
-        Group("监控", Page.Overview, Page.Processes);
-        Group("空间", Page.Disk, Page.Projects, Page.Cleanup);
-        Group("工具", Page.Screenshot, Page.Typing);
-        var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
-        _nav.Children.Add(NavItem(Page.Settings));
+        BuildNav();
         root.Children.Add(side);
         TrayController.Shared.FrameChanged += AnimateBrand;
         TrayController.Shared.Viewer(true);
@@ -88,16 +79,39 @@ public sealed class MainWindow : Window
         OnTick();
     }
 
+    void BuildNav()
+    {
+        _nav.Children.Clear(); _navItems.Clear(); _badges.Clear();
+        void Group(string title, params Page[] pages)
+        {
+            if (title.Length > 0) { var h = T(title, 11, FontWeights.SemiBold, Theme.Tertiary); h.Margin = new Thickness(10, 10, 0, 4); _nav.Children.Add(h); }
+            foreach (var p in pages) _nav.Children.Add(NavItem(p));
+        }
+        Group(L("监控", "Monitor"), Page.Overview, Page.Processes);
+        Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup);
+        Group(L("工具", "Tools"), Page.Screenshot, Page.Typing);
+        var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
+        _nav.Children.Add(NavItem(Page.Settings));
+    }
+
+    /// Rebuilds the sidebar (labels, badges) after the UI language changes.
+    public void RebuildNav()
+    {
+        BuildNav();
+        foreach (var (k, b) in _navItems) b.Background = k == _current ? Theme.AccentSoftBrush : Brushes.Transparent;
+        OnTick();
+    }
+
     static (string title, string glyph, Color tile) Meta(Page p) => p switch
     {
-        Page.Overview => ("概览", "\uE9D9", Theme.CpuC),
-        Page.Processes => ("进程", "\uE9F5", Color.FromRgb(92, 107, 140)),
-        Page.Disk => ("磁盘", "\uEDA2", Theme.DiskC),
-        Page.Projects => ("项目", "\uE8B7", Theme.NetOutC),
-        Page.Cleanup => ("清理", "\uE74D", Color.FromRgb(237, 92, 140)),
-        Page.Typing => ("打字", "\uE765", Theme.MemC),
-        Page.Screenshot => ("截图", "\uE722", Color.FromRgb(64, 178, 217)),
-        _ => ("设置", "\uE713", Color.FromRgb(140, 143, 153)),
+        Page.Overview => (L("概览", "Overview"), "\uE9D9", Theme.CpuC),
+        Page.Processes => (L("进程", "Processes"), "\uE9F5", Color.FromRgb(92, 107, 140)),
+        Page.Disk => (L("磁盘", "Disk"), "\uEDA2", Theme.DiskC),
+        Page.Projects => (L("项目", "Projects"), "\uE8B7", Theme.NetOutC),
+        Page.Cleanup => (L("清理", "Cleanup"), "\uE74D", Color.FromRgb(237, 92, 140)),
+        Page.Typing => (L("打字", "Typing"), "\uE765", Theme.MemC),
+        Page.Screenshot => (L("截图", "Screenshot"), "\uE722", Color.FromRgb(64, 178, 217)),
+        _ => (L("设置", "Settings"), "\uE713", Color.FromRgb(140, 143, 153)),
     };
 
     Border NavItem(Page p)
@@ -172,7 +186,7 @@ public sealed class MainWindow : Window
         _status.Text = m.StatusSentence();
         SetBadge(Page.Overview, Fmt.Pct(m.Cpu.Total), m.Cpu.Total > 0.9);
         SetBadge(Page.Processes, Fmt.Pct(m.Memory.UsedFraction), m.Memory.PressureLevel >= 4);
-        SetBadge(Page.Disk, "剩 " + Fmt.DiskShort(m.Disk.Free), m.Disk.Total > 0 && m.Disk.Free < st.AlertDiskGB * 1073741824L);
+        SetBadge(Page.Disk, L("剩 ", "") + Fmt.DiskShort(m.Disk.Free) + L("", " free"), m.Disk.Total > 0 && m.Disk.Free < st.AlertDiskGB * 1073741824L);
         SetBadge(Page.Projects, ProjectModel.Shared.Projects.Count > 0 ? ProjectModel.Shared.Projects.Count.ToString() : null);
         long rec = CleanupModel.Shared.All.Where(i => i.Recommended).Sum(i => i.Size);
         SetBadge(Page.Cleanup, rec > 0 ? Fmt.Bytes(rec) : null);
@@ -183,8 +197,8 @@ public sealed class MainWindow : Window
         FrameworkElement Meter(string glyph, string title, double v, string value, Color c) =>
             V(4, Row(H(5, Glyph(glyph, 11), T(title, 11, FontWeights.Medium)), T(value, 11, color: Theme.Secondary)), Bar(v, c, 5));
         _footer.Content = Panel(V(8,
-            Meter("\uEDA2", "磁盘 " + m.Disk.Name, m.Disk.UsedFraction, Fmt.DiskShort(m.Disk.Free) + " 可用", m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC),
-            Meter("\uE964", "内存", m.Memory.UsedFraction, Fmt.Pct(m.Memory.UsedFraction), m.Memory.PressureLevel >= 4 ? Theme.DangerC : Theme.MemC)), 10, Theme.CardAlt);
+            Meter("\uEDA2", L("磁盘 ", "Disk ") + m.Disk.Name, m.Disk.UsedFraction, Fmt.DiskShort(m.Disk.Free) + L(" 可用", " free"), m.Disk.UsedFraction > 0.9 ? Theme.DangerC : Theme.DiskC),
+            Meter("\uE964", L("内存", "Memory"), m.Memory.UsedFraction, Fmt.Pct(m.Memory.UsedFraction), m.Memory.PressureLevel >= 4 ? Theme.DangerC : Theme.MemC)), 10, Theme.CardAlt);
         if (IsVisible) _page?.Tick();
     }
 }

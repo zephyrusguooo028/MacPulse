@@ -95,7 +95,7 @@ public sealed class DiskScanEngine
             else keep.Add(k);
         }
         if (smallCount > 0)
-            keep.Add(new DiskNode { Path = node.Path, Name = $"其他 {smallCount} 个小项目", IsAggregate = true, Size = smallSize, FileCount = smallCount });
+            keep.Add(new DiskNode { Path = node.Path, Name = L($"其他 {smallCount} 个小项目", $"{smallCount} other small items"), IsAggregate = true, Size = smallSize, FileCount = smallCount });
         keep.Sort((a, b) => b.Size.CompareTo(a.Size));
         foreach (var k in keep) k.Parent = node;
         node.Children = keep; node.Size = total; node.FileCount = files;

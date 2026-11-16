@@ -284,7 +284,7 @@ public static class UIX
         return Row(left, trailing);
     }
 
-    public static bool Confirm(string title, string message, string ok = "确定", bool danger = true)
+    public static bool Confirm(string title, string message, string? ok = null, bool danger = true)
         => MessageBox.Show(message, title, MessageBoxButton.OKCancel, danger ? MessageBoxImage.Warning : MessageBoxImage.Information) == MessageBoxResult.OK;
 
     public static void Info(string title, string message) => MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
@@ -298,21 +298,21 @@ public static class UIX
     {
         var m = new ContextMenu();
         void Add(string h, Action a) { var i = new MenuItem { Header = h }; i.Click += (_, _) => a(); m.Items.Add(i); }
-        Add("在资源管理器中显示", () => Reveal(path));
-        Add("复制路径", () => Clipboard.SetText(path));
-        Add("加入白名单（永不清理）", () => { Settings.Shared.Whitelist.Add(Fmt.Tilde(path)); Settings.Shared.Save(); });
+        Add(L("在资源管理器中显示", "Show in File Explorer"), () => Reveal(path));
+        Add(L("复制路径", "Copy path"), () => Clipboard.SetText(path));
+        Add(L("加入白名单（永不清理）", "Add to whitelist (never clean)"), () => { Settings.Shared.Whitelist.Add(Fmt.Tilde(path)); Settings.Shared.Save(); });
         m.Items.Add(new Separator());
-        Add("移到回收站…", () => { if (RecycleOne(path, size)) onRecycled(); });
+        Add(L("移到回收站…", "Move to Recycle Bin…"), () => { if (RecycleOne(path, size)) onRecycled(); });
         return m;
     }
 
     public static bool RecycleOne(string path, long size)
     {
-        if (!CleanupExecutor.IsSafeTarget(path)) { Info("不能删除这个位置", $"{Fmt.Tilde(path)} 是受保护的系统或个人目录。"); return false; }
-        if (Settings.Shared.IsWhitelisted(path)) { Info("这个位置在白名单里", $"{Fmt.Tilde(path)} 已被加入白名单，Peekaboo 不会删除它。"); return false; }
-        if (!Confirm("移到回收站？", $"{Fmt.Tilde(path)}\n{Fmt.Bytes(size)}\n\n可以在回收站里恢复。")) return false;
+        if (!CleanupExecutor.IsSafeTarget(path)) { Info(L("不能删除这个位置", "This location can’t be deleted"), L($"{Fmt.Tilde(path)} 是受保护的系统或个人目录。", $"{Fmt.Tilde(path)} is a protected system or personal folder.")); return false; }
+        if (Settings.Shared.IsWhitelisted(path)) { Info(L("这个位置在白名单里", "This location is whitelisted"), L($"{Fmt.Tilde(path)} 已被加入白名单，Peekaboo 不会删除它。", $"{Fmt.Tilde(path)} is on the whitelist, so Peekaboo won’t delete it.")); return false; }
+        if (!Confirm(L("移到回收站？", "Move to Recycle Bin?"), L($"{Fmt.Tilde(path)}\n{Fmt.Bytes(size)}\n\n可以在回收站里恢复。", $"{Fmt.Tilde(path)}\n{Fmt.Bytes(size)}\n\nYou can restore it from the Recycle Bin."))) return false;
         var err = Native.Recycle(path);
-        if (err is not null) { Info("没能移到回收站", err); return false; }
+        if (err is not null) { Info(L("没能移到回收站", "Couldn’t move to Recycle Bin"), err); return false; }
         return true;
     }
 }

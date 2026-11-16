@@ -57,15 +57,15 @@ static class Alerts
     {
         var m = SystemMonitor.Shared; var s = Settings.Shared; var now = DateTime.Now;
         if (s.AlertDisk && m.Disk.Total > 0 && m.Disk.Free < s.AlertDiskGB * 1073741824L)
-            Fire("disk", TimeSpan.FromHours(6), "磁盘空间不足", $"{m.Disk.Name} 只剩 {Fmt.Bytes(m.Disk.Free)}，打开 Peekaboo 看看哪些可以清理。", Page.Cleanup);
+            Fire("disk", TimeSpan.FromHours(6), L("磁盘空间不足", "Low disk space"), L($"{m.Disk.Name} 只剩 {Fmt.Bytes(m.Disk.Free)}，打开 Peekaboo 看看哪些可以清理。", $"Only {Fmt.Bytes(m.Disk.Free)} left on {m.Disk.Name}. Open Peekaboo to see what you can clean up."), Page.Cleanup);
         if (s.AlertMemory)
         {
-            if (m.Memory.PressureLevel >= 4) { _pressureSince ??= now; if ((now - _pressureSince.Value).TotalSeconds > 30) Fire("mem", TimeSpan.FromHours(1), "内存压力很高", $"已用 {Fmt.Bytes(m.Memory.Used)} / {Fmt.Bytes(m.Memory.Total)}，可以关掉一些占内存的应用。", Page.Processes); }
+            if (m.Memory.PressureLevel >= 4) { _pressureSince ??= now; if ((now - _pressureSince.Value).TotalSeconds > 30) Fire("mem", TimeSpan.FromHours(1), L("内存压力很高", "High memory pressure"), L($"已用 {Fmt.Bytes(m.Memory.Used)} / {Fmt.Bytes(m.Memory.Total)}，可以关掉一些占内存的应用。", $"{Fmt.Bytes(m.Memory.Used)} of {Fmt.Bytes(m.Memory.Total)} in use. Try closing some memory-heavy apps."), Page.Processes); }
             else _pressureSince = null;
         }
         if (s.AlertCpu)
         {
-            if (m.Cpu.Total * 100 >= s.AlertCpuPercent) { _cpuSince ??= now; if ((now - _cpuSince.Value).TotalMinutes > 5) Fire("cpu", TimeSpan.FromHours(1), "CPU 持续高负载", $"过去 5 分钟 CPU 一直在 {s.AlertCpuPercent}% 以上。", Page.Processes); }
+            if (m.Cpu.Total * 100 >= s.AlertCpuPercent) { _cpuSince ??= now; if ((now - _cpuSince.Value).TotalMinutes > 5) Fire("cpu", TimeSpan.FromHours(1), L("CPU 持续高负载", "Sustained high CPU"), L($"过去 5 分钟 CPU 一直在 {s.AlertCpuPercent}% 以上。", $"CPU has been above {s.AlertCpuPercent}% for the past 5 minutes."), Page.Processes); }
             else _cpuSince = null;
         }
         if (s.CleanupTips && (now - _lastTipCheck).TotalHours > 6)
@@ -78,7 +78,7 @@ static class Alerts
                     .ContinueWith(t => UiThread.Run(() =>
                     {
                         s.LastCleanupTip = DateTime.Now; s.Save();
-                        if (t.Result >= threshold) Fire("tip", TimeSpan.Zero, $"可以清理 {Fmt.Bytes(t.Result)}", $"开发缓存和临时文件占了 {Fmt.Bytes(t.Result)}，点这里查看并清理。", Page.Cleanup);
+                        if (t.Result >= threshold) Fire("tip", TimeSpan.Zero, L($"可以清理 {Fmt.Bytes(t.Result)}", $"{Fmt.Bytes(t.Result)} can be cleaned up"), L($"开发缓存和临时文件占了 {Fmt.Bytes(t.Result)}，点这里查看并清理。", $"Developer caches and temp files take up {Fmt.Bytes(t.Result)}. Click to review and clean."), Page.Cleanup);
                     }));
             }
         }

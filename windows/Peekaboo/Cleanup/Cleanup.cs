@@ -13,22 +13,22 @@ public static class CleanupText
 {
     public static string Title(CleanupCategory c) => c switch
     {
-        CleanupCategory.DevCache => "开发工具缓存",
-        CleanupCategory.ProjectArtifacts => "项目依赖与构建产物",
-        CleanupCategory.AppCache => "应用缓存",
-        CleanupCategory.TempAndLogs => "临时文件与日志",
-        CleanupCategory.Downloads => "下载文件夹里的旧文件",
-        _ => "大文件",
+        CleanupCategory.DevCache => L("开发工具缓存", "Developer tool caches"),
+        CleanupCategory.ProjectArtifacts => L("项目依赖与构建产物", "Project dependencies and build output"),
+        CleanupCategory.AppCache => L("应用缓存", "App caches"),
+        CleanupCategory.TempAndLogs => L("临时文件与日志", "Temp files and logs"),
+        CleanupCategory.Downloads => L("下载文件夹里的旧文件", "Old files in Downloads"),
+        _ => L("大文件", "Large files"),
     };
 
     public static string Note(CleanupCategory c) => c switch
     {
-        CleanupCategory.DevCache => "npm / pip / Go / NuGet 等工具的下载和编译缓存，删掉后用到时会重新下载。",
-        CleanupCategory.ProjectArtifacts => "node_modules、dist、bin/obj 等可重新生成的目录。默认只勾选长期没改动的项目。",
-        CleanupCategory.AppCache => "浏览器和各应用的缓存。默认只勾选当前没在运行的应用。",
-        CleanupCategory.TempAndLogs => "系统临时文件夹、崩溃转储和日志。正在使用的文件会自动跳过。",
-        CleanupCategory.Downloads => "下载文件夹里很久没动过的文件和安装包，请自己确认后勾选。",
-        _ => "整个用户目录里的大文件，来自磁盘页的扫描结果，请自己确认后勾选。",
+        CleanupCategory.DevCache => L("npm / pip / Go / NuGet 等工具的下载和编译缓存，删掉后用到时会重新下载。", "Download and build caches for npm, pip, Go, NuGet and other tools. They’re re-downloaded when needed."),
+        CleanupCategory.ProjectArtifacts => L("node_modules、dist、bin/obj 等可重新生成的目录。默认只勾选长期没改动的项目。", "Regenerable folders like node_modules, dist and bin/obj. Only long-untouched projects are selected by default."),
+        CleanupCategory.AppCache => L("浏览器和各应用的缓存。默认只勾选当前没在运行的应用。", "Browser and app caches. Only apps that aren’t running are selected by default."),
+        CleanupCategory.TempAndLogs => L("系统临时文件夹、崩溃转储和日志。正在使用的文件会自动跳过。", "System temp folder, crash dumps and logs. Files in use are skipped automatically."),
+        CleanupCategory.Downloads => L("下载文件夹里很久没动过的文件和安装包，请自己确认后勾选。", "Files and installers in Downloads that haven’t been touched in a long time. Review before selecting."),
+        _ => L("整个用户目录里的大文件，来自磁盘页的扫描结果，请自己确认后勾选。", "Large files across your user folder, from the Disk page scan. Review before selecting."),
     };
 
     public static string Glyph(CleanupCategory c) => c switch
@@ -46,24 +46,24 @@ public static class CleanupScanner
 {
     sealed record Dev(string Path, string Title, bool Recommended);
 
-    static readonly Dev[] DevCaches =
+    static Dev[] DevCaches => new Dev[]
     {
-        new("%LocalAppData%\\npm-cache", "npm 缓存", true),
-        new("%AppData%\\npm-cache", "npm 缓存（旧位置）", true),
-        new("%LocalAppData%\\Yarn\\Cache", "Yarn 缓存", true),
-        new("%LocalAppData%\\pnpm\\store", "pnpm 存储", false),
-        new("~\\.bun\\install\\cache", "Bun 缓存", true),
-        new("%LocalAppData%\\pip\\Cache", "pip 缓存", true),
-        new("%LocalAppData%\\go-build", "Go 编译缓存", true),
-        new("%LocalAppData%\\NuGet\\v3-cache", "NuGet 下载缓存", true),
-        new("%LocalAppData%\\NuGet\\plugins-cache", "NuGet 插件缓存", true),
-        new("~\\.nuget\\packages", "NuGet 全局包", false),
-        new("~\\.gradle\\caches", "Gradle 缓存", true),
-        new("~\\.cargo\\registry\\cache", "Cargo 下载缓存", true),
-        new("%LocalAppData%\\ms-playwright", "Playwright 浏览器", false),
-        new("~\\.cache\\huggingface", "Hugging Face 模型缓存", false),
-        new("%LocalAppData%\\electron\\Cache", "Electron 下载缓存", true),
-        new("%LocalAppData%\\node-gyp\\Cache", "node-gyp 缓存", true),
+        new("%LocalAppData%\\npm-cache", L("npm 缓存", "npm cache"), true),
+        new("%AppData%\\npm-cache", L("npm 缓存（旧位置）", "npm cache (old location)"), true),
+        new("%LocalAppData%\\Yarn\\Cache", L("Yarn 缓存", "Yarn cache"), true),
+        new("%LocalAppData%\\pnpm\\store", L("pnpm 存储", "pnpm store"), false),
+        new("~\\.bun\\install\\cache", L("Bun 缓存", "Bun cache"), true),
+        new("%LocalAppData%\\pip\\Cache", L("pip 缓存", "pip cache"), true),
+        new("%LocalAppData%\\go-build", L("Go 编译缓存", "Go build cache"), true),
+        new("%LocalAppData%\\NuGet\\v3-cache", L("NuGet 下载缓存", "NuGet download cache"), true),
+        new("%LocalAppData%\\NuGet\\plugins-cache", L("NuGet 插件缓存", "NuGet plugins cache"), true),
+        new("~\\.nuget\\packages", L("NuGet 全局包", "NuGet global packages"), false),
+        new("~\\.gradle\\caches", L("Gradle 缓存", "Gradle cache"), true),
+        new("~\\.cargo\\registry\\cache", L("Cargo 下载缓存", "Cargo download cache"), true),
+        new("%LocalAppData%\\ms-playwright", L("Playwright 浏览器", "Playwright browsers"), false),
+        new("~\\.cache\\huggingface", L("Hugging Face 模型缓存", "Hugging Face model cache"), false),
+        new("%LocalAppData%\\electron\\Cache", L("Electron 下载缓存", "Electron download cache"), true),
+        new("%LocalAppData%\\node-gyp\\Cache", L("node-gyp 缓存", "node-gyp cache"), true),
     };
 
     static string Expand(string p) => Settings.Expand(p);
@@ -115,7 +115,7 @@ public static class CleanupScanner
                 if (s < 10L << 20) continue;
                 bool isRunning = MatchesRunning(app, running);
                 var rel = Fmt.Tilde(path);
-                items.Add(new CleanupItem(path, $"{app} · {Path.GetFileName(path)}", isRunning ? rel + " · 正在运行" : rel, s,
+                items.Add(new CleanupItem(path, $"{app} · {Path.GetFileName(path)}", isRunning ? rel + L(" · 正在运行", " · running") : rel, s,
                                           CleanupCategory.AppCache, !isRunning, ContentsOnly: true));
             }
         }
@@ -182,13 +182,13 @@ public static class CleanupScanner
         var list = new List<CleanupItem>();
         var temp = Path.GetTempPath().TrimEnd('\\');
         long ts = FileSizer.Size(temp);
-        if (ts > 1 << 20) list.Add(new CleanupItem(temp, "系统临时文件", Fmt.Tilde(temp), ts, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
+        if (ts > 1 << 20) list.Add(new CleanupItem(temp, L("系统临时文件", "System temp files"), Fmt.Tilde(temp), ts, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
         var dumps = Path.Combine(Paths.LocalAppData, "CrashDumps");
         long ds = FileSizer.Size(dumps);
-        if (ds > 1 << 20) list.Add(new CleanupItem(dumps, "崩溃转储", Fmt.Tilde(dumps), ds, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
+        if (ds > 1 << 20) list.Add(new CleanupItem(dumps, L("崩溃转储", "Crash dumps"), Fmt.Tilde(dumps), ds, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
         var wer = Path.Combine(Paths.LocalAppData, "Microsoft", "Windows", "WER");
         long ws = FileSizer.Size(wer);
-        if (ws > 1 << 20) list.Add(new CleanupItem(wer, "Windows 错误报告", Fmt.Tilde(wer), ws, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
+        if (ws > 1 << 20) list.Add(new CleanupItem(wer, L("Windows 错误报告", "Windows Error Reporting"), Fmt.Tilde(wer), ws, CleanupCategory.TempAndLogs, true, ContentsOnly: true));
         return list;
     }
 
@@ -211,7 +211,7 @@ public static class CleanupScanner
                 if (!(last < cutoff || (installer && last < installerCutoff))) continue;
                 long s = FileSizer.Size(p);
                 if (s < 5 << 20) continue;
-                list.Add(new CleanupItem(p, name, $"{(installer ? "安装包/压缩包" : "文件")} · {Fmt.DaysAgo(last)} 天没动过", s, CleanupCategory.Downloads, false));
+                list.Add(new CleanupItem(p, name, L($"{(installer ? "安装包/压缩包" : "文件")} · {Fmt.DaysAgo(last)} 天没动过", $"{(installer ? "Installer/archive" : "File")} · untouched for {Fmt.DaysAgo(last)} days"), s, CleanupCategory.Downloads, false));
             }
             catch { }
         }

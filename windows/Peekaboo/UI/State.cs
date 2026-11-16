@@ -73,12 +73,12 @@ public sealed class ProjectModel
         _engine?.Cancel();
         var engine = new ProjectScanEngine();
         _engine = engine;
-        Scanning = true; Status = "查找项目…"; Changed?.Invoke();
+        Scanning = true; Status = L("查找项目…", "Finding projects…"); Changed?.Invoke();
         var roots = Settings.Shared.ProjectRootPaths.ToList();
         Task.Run(() =>
         {
             var found = engine.Find(roots);
-            UiThread.Run(() => { Status = $"找到 {found.Count} 个项目，正在计算大小…"; Changed?.Invoke(); });
+            UiThread.Run(() => { Status = L($"找到 {found.Count} 个项目，正在计算大小…", $"Found {found.Count} projects, calculating sizes…"); Changed?.Invoke(); });
             var results = new Project[found.Count];
             Parallel.For(0, found.Count, i => results[i] = engine.Measure(found[i].path, found[i].tags, found[i].root));
             UiThread.Run(() =>
@@ -154,14 +154,14 @@ public sealed class CleanupModel
             bool isStale = Fmt.DaysAgo(p.LastModified) >= stale;
             foreach (var a in p.Artifacts.Where(a => a.Size > 1 << 20))
             {
-                var note = a.Safe ? a.KindText : a.KindText + "（未在 .gitignore 中，请确认）";
-                arts.Add(new CleanupItem(a.Path, $"{p.DisplayName} / {Path.GetFileName(a.Path)}", $"{note} · 项目 {Fmt.Relative(p.LastModified)}修改",
+                var note = a.Safe ? a.KindText : a.KindText + L("（未在 .gitignore 中，请确认）", " (not in .gitignore, please check)");
+                arts.Add(new CleanupItem(a.Path, $"{p.DisplayName} / {Path.GetFileName(a.Path)}", L($"{note} · 项目 {Fmt.Relative(p.LastModified)}修改", $"{note} · project modified {Fmt.Relative(p.LastModified)}"),
                                          a.Size, CleanupCategory.ProjectArtifacts, a.Safe && isStale));
             }
         }
         Items[CleanupCategory.ProjectArtifacts] = arts.OrderByDescending(i => i.Size).ToList();
         Items[CleanupCategory.LargeFiles] = DiskModel.Shared.LargeFiles.Take(100)
-            .Select(f => new CleanupItem(f.Path, Path.GetFileName(f.Path), $"{Fmt.Tilde(Path.GetDirectoryName(f.Path) ?? "")} · {Fmt.Relative(f.Modified)}修改",
+            .Select(f => new CleanupItem(f.Path, Path.GetFileName(f.Path), L($"{Fmt.Tilde(Path.GetDirectoryName(f.Path) ?? "")} · {Fmt.Relative(f.Modified)}修改", $"{Fmt.Tilde(Path.GetDirectoryName(f.Path) ?? "")} · modified {Fmt.Relative(f.Modified)}"),
                                          f.Size, CleanupCategory.LargeFiles, false)).ToList();
         Changed?.Invoke();
     }
@@ -181,8 +181,8 @@ public sealed class CleanupModel
                 Selected.ExceptWith(ok);
                 RecycleSize = rb; Working = false;
                 Records = CleanupExecutor.Records();
-                LastResult = permanent ? $"已删除 {o.Count} 项，释放 {Fmt.Bytes(o.Freed)}"
-                                       : $"已把 {o.Count} 项（{Fmt.Bytes(o.Freed)}）移到回收站，清空回收站后才会真正释放空间";
+                LastResult = permanent ? L($"已删除 {o.Count} 项，释放 {Fmt.Bytes(o.Freed)}", $"Deleted {o.Count} items, freed {Fmt.Bytes(o.Freed)}")
+                                       : L($"已把 {o.Count} 项（{Fmt.Bytes(o.Freed)}）移到回收站，清空回收站后才会真正释放空间", $"Moved {o.Count} items ({Fmt.Bytes(o.Freed)}) to the Recycle Bin. Empty it to actually free the space");
                 ProjectModel.Shared.Removed(ok);
                 Changed?.Invoke();
                 done(o);
@@ -200,7 +200,7 @@ public sealed class CleanupModel
             UiThread.Run(() =>
             {
                 RecycleSize = rb; Working = false; Records = CleanupExecutor.Records();
-                LastResult = $"回收站已清空，释放 {Fmt.Bytes(freed)}";
+                LastResult = L($"回收站已清空，释放 {Fmt.Bytes(freed)}", $"Recycle Bin emptied, freed {Fmt.Bytes(freed)}");
                 Changed?.Invoke();
             });
         });

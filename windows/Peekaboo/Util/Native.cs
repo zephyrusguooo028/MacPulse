@@ -110,7 +110,7 @@ internal static class Native
             fFlags = (ushort)(FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI),
         };
         int rc = SHFileOperation(ref op);
-        if (rc != 0) return $"错误代码 0x{rc:X}";
-        return op.fAnyOperationsAborted ? "操作被取消" : null;
+        if (rc != 0) return L($"错误代码 0x{rc:X}", $"Error code 0x{rc:X}");
+        return op.fAnyOperationsAborted ? L("操作被取消", "Operation was canceled") : null;
     }
 }

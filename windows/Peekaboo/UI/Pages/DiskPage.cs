@@ -20,30 +20,30 @@ public sealed class DiskPage : PageView
         _hoverLine = T("", 12.5, color: Theme.Secondary);
         var d = SystemMonitor.Shared.Disk;
         var actions = H(8);
-        if (M.Scanning) actions.Children.Add(Btn("停止", M.Cancel));
+        if (M.Scanning) actions.Children.Add(Btn(L("停止", "Stop"), M.Cancel));
         else
         {
-            actions.Children.Add(Btn("选择文件夹…", ChooseFolder, glyph: ""));
-            actions.Children.Add(Btn(M.Root is null ? "扫描用户目录" : "重新扫描", () => M.Scan(Paths.Home), primary: true, glyph: ""));
+            actions.Children.Add(Btn(L("选择文件夹…", "Choose folder…"), ChooseFolder, glyph: ""));
+            actions.Children.Add(Btn(M.Root is null ? L("扫描用户目录", "Scan user folder") : L("重新扫描", "Rescan"), () => M.Scan(Paths.Home), primary: true, glyph: ""));
         }
 
         var drives = V(12);
         foreach (var dr in DiskReader.All())
         {
-            drives.Children.Add(V(6, Row(T(dr.Name, 13, FontWeights.SemiBold), T($"可用 {Fmt.Bytes(dr.Free)} / 共 {Fmt.Bytes(dr.Total)}", 12, color: Theme.Secondary)),
-                Stacked(new List<(string, double, Color)> { ("已用", dr.Used, Theme.CpuC), ("空闲", dr.Free, Color.FromArgb(120, Theme.DiskC.R, Theme.DiskC.G, Theme.DiskC.B)) }, dr.Total, 14, legend: false)));
+            drives.Children.Add(V(6, Row(T(dr.Name, 13, FontWeights.SemiBold), T(L($"可用 {Fmt.Bytes(dr.Free)} / 共 {Fmt.Bytes(dr.Total)}", $"{Fmt.Bytes(dr.Free)} free of {Fmt.Bytes(dr.Total)}"), 12, color: Theme.Secondary)),
+                Stacked(new List<(string, double, Color)> { (L("已用", "Used"), dr.Used, Theme.CpuC), (L("空闲", "Free"), dr.Free, Color.FromArgb(120, Theme.DiskC.R, Theme.DiskC.G, Theme.DiskC.B)) }, dr.Total, 14, legend: false)));
         }
         if (M.Root is { } r && r.Path.Equals(Paths.Home, StringComparison.OrdinalIgnoreCase))
         {
-            var note = T($"其中你的用户目录占 {Fmt.Bytes(r.Size)}，其余是 Windows 系统、Program Files 里的程序、页面文件和休眠文件等。", 12, color: Theme.Secondary);
+            var note = T(L($"其中你的用户目录占 {Fmt.Bytes(r.Size)}，其余是 Windows 系统、Program Files 里的程序、页面文件和休眠文件等。", $"Your user folder takes {Fmt.Bytes(r.Size)}. The rest is Windows itself, programs in Program Files, the page file, the hibernation file and so on."), 12, color: Theme.Secondary);
             note.TextWrapping = TextWrapping.Wrap;
             drives.Children.Add(note);
         }
 
-        var parts = new List<UIElement> { PageHeader("磁盘", $"{d.Name} 共 {Fmt.Bytes(d.Total)}，可用 {Fmt.Bytes(d.Free)}", actions), Card("本机磁盘", "", drives) };
+        var parts = new List<UIElement> { PageHeader(L("磁盘", "Disk"), L($"{d.Name} 共 {Fmt.Bytes(d.Total)}，可用 {Fmt.Bytes(d.Free)}", $"{d.Name} {Fmt.Bytes(d.Total)} total, {Fmt.Bytes(d.Free)} free"), actions), Card(L("本机磁盘", "Local drives"), "", drives) };
 
         if (M.Scanning)
-            parts.Add(Card($"正在扫描 {Fmt.Tilde(M.ScanRoot)}", "", T($"已统计 {M.Files:N0} 个文件，{Fmt.Bytes(M.Bytes)}", 13)));
+            parts.Add(Card(L($"正在扫描 {Fmt.Tilde(M.ScanRoot)}", $"Scanning {Fmt.Tilde(M.ScanRoot)}"), "", T(L($"已统计 {M.Files:N0} 个文件，{Fmt.Bytes(M.Bytes)}", $"Counted {M.Files:N0} files, {Fmt.Bytes(M.Bytes)}"), 13)));
 
         if (M.Current is { } cur)
         {
@@ -56,13 +56,13 @@ public sealed class DiskPage : PageView
             body.Children.Add(list);
             body.Children.Add(V(6, map, _hoverLine));
             parts.Add(body);
-            _hoverLine.Text = "鼠标移到方块上查看详情，点击文件夹进入，右键可以在资源管理器中显示或移到回收站";
+            _hoverLine.Text = L("鼠标移到方块上查看详情，点击文件夹进入，右键可以在资源管理器中显示或移到回收站", "Hover over a block for details, click a folder to open it, right-click to show in File Explorer or move to the Recycle Bin");
         }
         else if (!M.Scanning)
         {
-            var start = Btn("开始扫描", () => M.Scan(Paths.Home), primary: true, glyph: "");
+            var start = Btn(L("开始扫描", "Start scan"), () => M.Scan(Paths.Home), primary: true, glyph: "");
             start.HorizontalAlignment = HorizontalAlignment.Center;
-            parts.Add(Card("看看空间都去哪了", "", V(4, Empty("", "还没扫描", $"扫描你的用户目录（{Paths.Home}），用方块图显示每个文件夹占了多少空间。\n第一次扫描可能需要一两分钟。"), start)));
+            parts.Add(Card(L("看看空间都去哪了", "See where your space went"), "", V(4, Empty("", L("还没扫描", "Not scanned yet"), L($"扫描你的用户目录（{Paths.Home}），用方块图显示每个文件夹占了多少空间。\n第一次扫描可能需要一两分钟。", $"Scans your user folder ({Paths.Home}) and shows how much space each folder takes as a treemap.\nThe first scan may take a minute or two.")), start)));
         }
         Content = V(16, parts.ToArray());
     }
@@ -81,7 +81,7 @@ public sealed class DiskPage : PageView
             t.MouseLeftButtonUp += (_, _) => { M.Current = target; Build(); };
             s.Children.Add(t);
         }
-        var info = T($"{Fmt.Bytes(node.Size)} · {node.FileCount:N0} 个文件" + (M.LastScan is { } ls ? $" · 扫描于 {ls:HH:mm}" : ""), 12.5, color: Theme.Secondary);
+        var info = T(L($"{Fmt.Bytes(node.Size)} · {node.FileCount:N0} 个文件", $"{Fmt.Bytes(node.Size)} · {node.FileCount:N0} files") + (M.LastScan is { } ls ? L($" · 扫描于 {ls:HH:mm}", $" · scanned at {ls:HH:mm}") : ""), 12.5, color: Theme.Secondary);
         return Row(s, info);
     }
 
@@ -111,7 +111,7 @@ public sealed class DiskPage : PageView
                     label.Margin = new Thickness(6);
                     cell.Child = label;
                 }
-                cell.MouseEnter += (_, _) => { _hovered = k; cell.Opacity = 0.85; _hoverLine.Text = $"{(k.IsAggregate ? k.Name : Fmt.Tilde(k.Path))}    {Fmt.Bytes(k.Size)}{(k.IsDirectory ? " · 点击进入" : "")}"; };
+                cell.MouseEnter += (_, _) => { _hovered = k; cell.Opacity = 0.85; _hoverLine.Text = $"{(k.IsAggregate ? k.Name : Fmt.Tilde(k.Path))}    {Fmt.Bytes(k.Size)}{(k.IsDirectory ? L(" · 点击进入", " · click to open") : "")}"; };
                 cell.MouseLeave += (_, _) => { cell.Opacity = 1; };
                 cell.MouseLeftButtonUp += (_, _) => M.Open(k);
                 if (!k.IsAggregate) cell.ContextMenu = FileMenu(k.Path, k.Size, () => M.Removed(k));
@@ -153,7 +153,7 @@ public sealed class DiskPage : PageView
 
     void ChooseFolder()
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = Paths.Home, Title = "选择要扫描的文件夹" };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = Paths.Home, Title = L("选择要扫描的文件夹", "Choose a folder to scan") };
         if (dlg.ShowDialog() == true) M.Scan(dlg.FolderName);
     }
 }

@@ -8,9 +8,9 @@ public static class IconArt
 {
     public static string Title(TrayIcon i) => i switch
     {
-        TrayIcon.None => "不显示", TrayIcon.Slime => "史莱姆", TrayIcon.Ghost => "小幽灵", TrayIcon.Chick => "小鸡",
-        TrayIcon.Whale => "小鲸鱼", TrayIcon.Rocket => "火箭", TrayIcon.Heart => "心跳", TrayIcon.Pulse => "脉搏线",
-        TrayIcon.Fan => "风扇", _ => "均衡器",
+        TrayIcon.None => L("不显示", "None"), TrayIcon.Slime => L("史莱姆", "Slime"), TrayIcon.Ghost => L("小幽灵", "Ghost"), TrayIcon.Chick => L("小鸡", "Chick"),
+        TrayIcon.Whale => L("小鲸鱼", "Whale"), TrayIcon.Rocket => L("火箭", "Rocket"), TrayIcon.Heart => L("心跳", "Heartbeat"), TrayIcon.Pulse => L("脉搏线", "Pulse"),
+        TrayIcon.Fan => L("风扇", "Fan"), _ => L("均衡器", "Equalizer"),
     };
 
     public static int Frames(TrayIcon i) => i switch

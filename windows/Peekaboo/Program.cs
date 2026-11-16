@@ -210,8 +210,9 @@ static class ShotDemo
                     new ShotMark { Kind = ShotTool.Rect, A = new Point(140, 170), B = new Point(440, 225), Color = Screenshot.Colors[0], Width = 3 },
                     new ShotMark { Kind = ShotTool.Arrow, A = new Point(600, 480), B = new Point(450, 260), Color = Screenshot.Colors[1], Width = 4 },
                     new ShotMark { Kind = ShotTool.Pen, Points = Enumerable.Range(0, 40).Select(i => new Point(160 + i * 8, 420 + Math.Sin(i / 3.0) * 18)).ToList(), Color = Screenshot.Colors[2], Width = 3 },
-                    new ShotMark { Kind = ShotTool.Mosaic, A = new Point(145, 205), B = new Point(640, 250), Color = red, Width = 3 },
-                    new ShotMark { Kind = ShotTool.Text, A = new Point(470, 330), Text = "这里很重要", Color = Screenshot.Colors[3], Width = 3 },
+                    new ShotMark { Kind = ShotTool.Mosaic, Brush = true, Width = 26, Points = Enumerable.Range(0, 30).Select(i => new Point(150 + i * 16, 225 + Math.Sin(i / 2.0) * 4)).ToList(), Color = red },
+                    new ShotMark { Kind = ShotTool.Mosaic, Blur = true, A = new Point(600, 380), B = new Point(750, 500), Color = red },
+                    new ShotMark { Kind = ShotTool.Text, A = new Point(470, 330), Text = "这里很重要", Color = Screenshot.Colors[3], Width = 28 },
                 });
                 await Task.Delay(800);
                 SaveVisual((FrameworkElement)o.Content, Path.Combine(dir, "overlay.png"));

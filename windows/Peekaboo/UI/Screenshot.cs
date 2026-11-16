@@ -67,7 +67,10 @@ public sealed class ShotMark
     public List<Point> Points = new();
     public string Text = "";
     public Color Color;
+    /// Stroke width; for text the font size; for brush mosaic the brush diameter.
     public double Width;
+    /// Mosaic only: frosted blur instead of pixel blocks / painted with a brush instead of a box.
+    public bool Blur, Brush;
 }
 
 /// Global hotkey through RegisterHotKey on a hidden message window.
@@ -202,7 +205,12 @@ public sealed class ShotOverlay : Window
     bool _editing;
     ShotTool? _tool;
     Color _color = Screenshot.Colors[0];
-    double _width = 3;
+    int _strokeLevel = 1;           // 0 thin, 1 medium, 2 thick
+    double _fontSize = 20;
+    bool _mosaicBrush = true, _mosaicBlur;
+    BitmapSource? _blurred;
+    double StrokeWidth => new[] { 2.0, 4.0, 7.0 }[_strokeLevel];
+    double BrushWidth => new[] { 14.0, 26.0, 44.0 }[_strokeLevel];
     TextBox? _textBox;
 
     public ShotOverlay(BitmapSource image, List<Rect> windowsPx, System.Drawing.Rectangle bounds)
@@ -234,6 +242,19 @@ public sealed class ShotOverlay : Window
     }
 
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hgt, uint flags);
+
+    /// Frosted copy of the screen, made the first time blur is used.
+    BitmapSource Blurred()
+    {
+        if (_blurred is not null) return _blurred;
+        int w = _image.PixelWidth, h = _image.PixelHeight;
+        var img = new Image { Source = _image, Width = w, Height = h, Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 28, KernelType = System.Windows.Media.Effects.KernelType.Gaussian } };
+        img.Measure(new Size(w, h)); img.Arrange(new Rect(0, 0, w, h));
+        var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(img);
+        rtb.Freeze();
+        return _blurred = rtb;
+    }
 
     static BitmapSource Pixelate(BitmapSource src)
     {
@@ -282,7 +303,7 @@ public sealed class ShotOverlay : Window
                 }
                 else if (_draft is not null)
                 {
-                    if (_draft.Kind == ShotTool.Pen) _draft.Points.Add(q); else _draft.B = q;
+                    if (_draft.Kind == ShotTool.Pen || _draft.Brush) _draft.Points.Add(q); else _draft.B = q;
                     DrawMarks();
                     return;
                 }
@@ -307,7 +328,15 @@ public sealed class ShotOverlay : Window
         {
             if (_tool is null) _moveOffset = new Point(p.X - sel.X, p.Y - sel.Y);
             else if (_tool == ShotTool.Text) { PlaceText(p); _dragStart = null; ReleaseMouseCapture(); }
-            else _draft = new ShotMark { Kind = _tool.Value, A = p, B = p, Points = { p }, Color = _color, Width = _width };
+            else
+            {
+                bool mosaic = _tool == ShotTool.Mosaic;
+                _draft = new ShotMark
+                {
+                    Kind = _tool.Value, A = p, B = p, Points = { p }, Color = _color,
+                    Width = mosaic ? (_mosaicBrush ? BrushWidth : 0) : StrokeWidth, Blur = mosaic && _mosaicBlur, Brush = mosaic && _mosaicBrush,
+                };
+            }
         }
     }
 
@@ -347,7 +376,7 @@ public sealed class ShotOverlay : Window
         if (_textBox is not null) CommitText();
         _textBox = new TextBox
         {
-            Width = 260, FontSize = 14 + _width * 3, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(_color),
+            Width = 260, FontSize = _fontSize, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(_color),
             Background = Brushes.Transparent, BorderBrush = new SolidColorBrush(_color), BorderThickness = new Thickness(1), Tag = p,
         };
         Canvas.SetLeft(_textBox, p.X); Canvas.SetTop(_textBox, p.Y);
@@ -361,7 +390,7 @@ public sealed class ShotOverlay : Window
     {
         if (_textBox is null) return;
         if (!string.IsNullOrWhiteSpace(_textBox.Text))
-            _marks.Add(new ShotMark { Kind = ShotTool.Text, A = (Point)_textBox.Tag, Text = _textBox.Text, Color = _color, Width = _width });
+            _marks.Add(new ShotMark { Kind = ShotTool.Text, A = (Point)_textBox.Tag, Text = _textBox.Text, Color = _color, Width = _fontSize });
         _ui.Children.Remove(_textBox);
         _textBox = null;
         DrawMarks();
@@ -404,13 +433,26 @@ public sealed class ShotOverlay : Window
                 foreach (var p in m.Points) pl.Points.Add(p);
                 return pl;
             case ShotTool.Text:
-                var t = new TextBlock { Text = m.Text, Foreground = brush, FontSize = 14 + m.Width * 3, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Font };
+                var t = new TextBlock { Text = m.Text, Foreground = brush, FontSize = m.Width, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Font };
                 Canvas.SetLeft(t, m.A.X + 3); Canvas.SetTop(t, m.A.Y + 2);
                 return t;
-            default: // mosaic: the pixelated copy, clipped to the rectangle
-                var mr = new Rect(m.A, m.B);
-                var img = new Image { Source = _pixelated, Stretch = Stretch.Fill, Width = ActualWidth, Height = ActualHeight, Clip = new RectangleGeometry(mr) };
-                return img;
+            default: // mosaic: the pixelated or blurred copy, clipped to the box or the brush stroke
+            {
+                Geometry clip;
+                if (m.Brush)
+                {
+                    var geo = new StreamGeometry();
+                    using (var ctx = geo.Open())
+                    {
+                        ctx.BeginFigure(m.Points[0], false, false);
+                        foreach (var pt in m.Points.Skip(1)) ctx.LineTo(pt, true, true);
+                        if (m.Points.Count == 1) ctx.LineTo(new Point(m.Points[0].X + 0.1, m.Points[0].Y), true, true);
+                    }
+                    clip = geo.GetWidenedPathGeometry(new Pen(Brushes.Black, m.Width) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round });
+                }
+                else clip = new RectangleGeometry(new Rect(m.A, m.B));
+                return new Image { Source = m.Blur ? Blurred() : _pixelated, Stretch = Stretch.Fill, Width = ActualWidth, Height = ActualHeight, Clip = clip };
+            }
         }
     }
 
@@ -470,20 +512,6 @@ public sealed class ShotOverlay : Window
             row.Children.Add(Tool(glyph, tip, _tool == t, () => { _tool = _tool == t ? null : t; Cursor = _tool is null ? Cursors.SizeAll : Cursors.Cross; Redraw(); }, tip));
         }
         row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
-        foreach (var c in Screenshot.Colors)
-        {
-            var col = c;
-            var dot = new Border { Width = 16, Height = 16, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(c), Margin = new Thickness(3, 7, 3, 7), Cursor = Cursors.Hand,
-                                   BorderBrush = _color == c ? Brushes.Black : new SolidColorBrush(Color.FromArgb(60, 0, 0, 0)), BorderThickness = new Thickness(_color == c ? 2 : 1) };
-            dot.MouseLeftButtonUp += (_, ev) => { _color = col; ev.Handled = true; Redraw(); };
-            row.Children.Add(dot);
-        }
-        foreach (var w in new[] { 2.0, 4.0, 7.0 })
-        {
-            var wid = w;
-            row.Children.Add(Tool(w < 3 ? "" : w < 5 ? "" : "", L($"{w:0} 号粗细", $"Size {w:0}"), Math.Abs(_width - w) < 0.1, () => { _width = wid; Redraw(); }));
-        }
-        row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
         row.Children.Add(Tool("", L("撤销 Ctrl+Z", "Undo Ctrl+Z"), false, Undo, L("撤销", "Undo")));
         row.Children.Add(Tool("", L("贴到屏幕", "Pin to screen"), false, Pin, L("贴图", "Pin")));
         row.Children.Add(Tool("", L("保存", "Save"), false, Save, L("保存", "Save")));
@@ -491,11 +519,20 @@ public sealed class ShotOverlay : Window
         var copy = new Button { Content = T(L("✓ 复制", "✓ Copy"), 12.5, FontWeights.SemiBold, Brushes.White), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(4, 0, 0, 0), Background = Theme.AccentBrush, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, ToolTip = L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Enter / double-click)") };
         copy.Click += (_, _) => CopyAndClose();
         row.Children.Add(copy);
-        _toolbar = new Border
+        Border Panel(UIElement child) => new()
         {
-            Background = new SolidColorBrush(Color.FromArgb(245, 250, 250, 250)), CornerRadius = new CornerRadius(8), Padding = new Thickness(5), Child = row, Cursor = Cursors.Arrow,
-            Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, ShadowDepth = 3, Opacity = 0.3 },
+            Background = new SolidColorBrush(Color.FromArgb(245, 250, 250, 250)), CornerRadius = new CornerRadius(8), Padding = new Thickness(5), Child = child,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, ShadowDepth = 3, Opacity = 0.3 }, HorizontalAlignment = HorizontalAlignment.Left,
         };
+        var rows = new StackPanel();
+        rows.Children.Add(Panel(row));
+        if (_tool is { } active)
+        {
+            var opts = Options(active);
+            var second = Panel(opts); second.Margin = new Thickness(0, 4, 0, 0);
+            rows.Children.Add(second);
+        }
+        _toolbar = new Border { Child = rows, Cursor = Cursors.Arrow, Background = Brushes.Transparent };
         _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double w0 = _toolbar.DesiredSize.Width, h0 = _toolbar.DesiredSize.Height;
         double x = Math.Clamp(sel.Right - w0, 8, Math.Max(8, ActualWidth - w0 - 8));
@@ -504,6 +541,68 @@ public sealed class ShotOverlay : Window
         if (y < 8) y = sel.Bottom - h0 - 8;
         Canvas.SetLeft(_toolbar, x); Canvas.SetTop(_toolbar, y);
         _ui.Children.Add(_toolbar);
+    }
+
+    /// Row 2: options for the selected tool, like WeChat's screenshot bar.
+    StackPanel Options(ShotTool tool)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        Border Chip(UIElement content, bool on, string tip, Action a)
+        {
+            var b = new Border { Child = content, Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(1, 0, 1, 0), CornerRadius = new CornerRadius(6), Cursor = Cursors.Hand, ToolTip = tip,
+                                 Background = on ? Theme.B(Theme.CpuC, 0.25) : Brushes.Transparent, MinHeight = 28 };
+            b.MouseLeftButtonUp += (_, e) => { a(); e.Handled = true; Redraw(); };
+            return b;
+        }
+        UIElement Sep() => new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) };
+        void Colors()
+        {
+            foreach (var c in Screenshot.Colors)
+            {
+                var col = c;
+                var dot = new Border { Width = 16, Height = 16, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(c), Margin = new Thickness(3, 6, 3, 6), Cursor = Cursors.Hand,
+                                       BorderBrush = _color == c ? Brushes.Black : new SolidColorBrush(Color.FromArgb(60, 0, 0, 0)), BorderThickness = new Thickness(_color == c ? 2 : 1) };
+                dot.MouseLeftButtonUp += (_, ev) => { _color = col; ev.Handled = true; Redraw(); };
+                row.Children.Add(dot);
+            }
+        }
+        void Sizes(double[] dots, string[] tips)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                int level = i;
+                var dot = new Ellipse { Width = dots[i], Height = dots[i], Fill = Brushes.Black, VerticalAlignment = VerticalAlignment.Center };
+                row.Children.Add(Chip(new Grid { Width = 20, Height = 22, Children = { dot } }, _strokeLevel == i, tips[i], () => _strokeLevel = level));
+            }
+        }
+        UIElement Word(string t) => new TextBlock { Text = t, FontSize = 12, Foreground = Brushes.Black, VerticalAlignment = VerticalAlignment.Center };
+        switch (tool)
+        {
+            case ShotTool.Text:
+                foreach (var (size, zh, en) in new[] { (14.0, "小", "Small"), (20.0, "中", "Medium"), (28.0, "大", "Large"), (40.0, "特大", "X-Large"), (56.0, "超大", "XX-Large") })
+                {
+                    var fs = size;
+                    var a = new TextBlock { Text = "A", FontSize = 8 + size / 4, FontWeight = FontWeights.SemiBold, Foreground = Brushes.Black, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+                    row.Children.Add(Chip(new Grid { Width = 20, Height = 24, Children = { a } }, Math.Abs(_fontSize - size) < 0.1, L($"{zh}（{size:0}）", $"{en} ({size:0})"), () => _fontSize = fs));
+                }
+                row.Children.Add(Sep());
+                Colors();
+                break;
+            case ShotTool.Mosaic:
+                row.Children.Add(Chip(Word(L("涂抹", "Brush")), _mosaicBrush, L("按住拖动涂抹", "Drag to paint"), () => _mosaicBrush = true));
+                row.Children.Add(Chip(Word(L("框选", "Box")), !_mosaicBrush, L("拖出一个框", "Drag a box"), () => _mosaicBrush = false));
+                row.Children.Add(Sep());
+                row.Children.Add(Chip(Word(L("马赛克", "Pixelate")), !_mosaicBlur, L("方块马赛克", "Pixel blocks"), () => _mosaicBlur = false));
+                row.Children.Add(Chip(Word(L("模糊", "Blur")), _mosaicBlur, L("毛玻璃模糊", "Frosted blur"), () => _mosaicBlur = true));
+                if (_mosaicBrush) { row.Children.Add(Sep()); Sizes(new[] { 8.0, 12.0, 17.0 }, new[] { L("细", "Small"), L("中", "Medium"), L("粗", "Large") }); }
+                break;
+            default:
+                Sizes(new[] { 4.0, 7.0, 11.0 }, new[] { L("细", "Thin"), L("中", "Medium"), L("粗", "Thick") });
+                row.Children.Add(Sep());
+                Colors();
+                break;
+        }
+        return row;
     }
 
     // ---- export
@@ -564,7 +663,7 @@ public sealed class ShotOverlay : Window
 
     public void Demo(Rect selection, IEnumerable<ShotMark> marks)
     {
-        _selection = selection; _editing = true; _tool = ShotTool.Arrow;
+        _selection = selection; _editing = true; _tool = ShotTool.Mosaic;
         _marks.AddRange(marks);
         Redraw();
     }

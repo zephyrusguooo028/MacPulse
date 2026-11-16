@@ -30,11 +30,14 @@ enum ShotTool: String, CaseIterable, Identifiable {
 }
 
 struct ShotMark: Identifiable {
-    enum Kind { case rect(CGRect), arrow(CGPoint, CGPoint), pen([CGPoint]), text(CGPoint, String), mosaic(CGRect) }
+    enum Kind { case rect(CGRect), arrow(CGPoint, CGPoint), pen([CGPoint]), text(CGPoint, String), mosaic(CGRect), mosaicPath([CGPoint]) }
     let id = UUID()
     var kind: Kind
     var color: Color
+    /// Stroke width; for text it is the font size; for brush mosaic the brush diameter.
     var width: CGFloat
+    /// Mosaic only: frosted blur instead of pixel blocks.
+    var blur = false
 }
 
 enum ShotPalette {
@@ -46,7 +49,7 @@ enum ShotPalette {
 
 /// Draws marks; `origin` is subtracted so the same code renders the overlay and the export.
 @MainActor
-func drawMarks(_ marks: [ShotMark], in ctx: GraphicsContext, origin: CGPoint, pixelated: Image?, fullSize: CGSize) {
+func drawMarks(_ marks: [ShotMark], in ctx: GraphicsContext, origin: CGPoint, pixelated: Image?, blurred: Image?, fullSize: CGSize) {
     func o(_ p: CGPoint) -> CGPoint { CGPoint(x: p.x - origin.x, y: p.y - origin.y) }
     func o(_ r: CGRect) -> CGRect { r.offsetBy(dx: -origin.x, dy: -origin.y) }
     for m in marks {
@@ -73,12 +76,21 @@ func drawMarks(_ marks: [ShotMark], in ctx: GraphicsContext, origin: CGPoint, pi
             for q in pts.dropFirst() { p.addLine(to: o(q)) }
             ctx.stroke(p, with: .color(m.color), style: style)
         case .text(let at, let s):
-            ctx.draw(Text(s).font(.system(size: 12 + m.width * 3, weight: .semibold)).foregroundColor(m.color), at: o(at), anchor: .topLeading)
+            ctx.draw(Text(s).font(.system(size: m.width, weight: .semibold)).foregroundColor(m.color), at: o(at), anchor: .topLeading)
         case .mosaic(let r):
-            guard let pixelated else { continue }
+            guard let fill = m.blur ? blurred : pixelated else { continue }
             var c = ctx
             c.clip(to: Path(o(r)))
-            c.draw(pixelated, in: CGRect(origin: CGPoint(x: -origin.x, y: -origin.y), size: fullSize))
+            c.draw(fill, in: CGRect(origin: CGPoint(x: -origin.x, y: -origin.y), size: fullSize))
+        case .mosaicPath(let pts):
+            // Brush mosaic: reveal the pixelated / blurred copy wherever the brush went.
+            guard let fill = m.blur ? blurred : pixelated, let f = pts.first else { continue }
+            var p = Path(); p.move(to: o(f))
+            if pts.count == 1 { p.addLine(to: CGPoint(x: o(f).x + 0.1, y: o(f).y)) }
+            for q in pts.dropFirst() { p.addLine(to: o(q)) }
+            var c = ctx
+            c.clip(to: p.strokedPath(StrokeStyle(lineWidth: m.width, lineCap: .round, lineJoin: .round)))
+            c.draw(fill, in: CGRect(origin: CGPoint(x: -origin.x, y: -origin.y), size: fullSize))
         }
     }
 }
@@ -93,6 +105,7 @@ final class ShotSession {
     let screen: NSScreen
     let image: CGImage
     let pixelated: CGImage?
+    let blurred: CGImage?
     let windowRects: [CGRect]       // local, top-left origin, front to back
     var phase: Phase = .selecting
     var selection: CGRect?
@@ -103,12 +116,18 @@ final class ShotSession {
     var draft: ShotMark?
     var tool: ShotTool?
     var color: Color = ShotPalette.colors[0]
-    var width: CGFloat = 3
+    /// 0 thin, 1 medium, 2 thick.
+    var strokeLevel = 1
+    var fontSize: CGFloat = 20
+    var mosaicBrush = true
+    var mosaicBlur = false
     var textAt: CGPoint?
     var textValue = ""
     var mouse: CGPoint = .zero
 
     var size: CGSize { screen.frame.size }
+    var strokeWidth: CGFloat { [2, 4, 7][strokeLevel] }
+    var brushWidth: CGFloat { [14, 26, 44][strokeLevel] }
 
     init(screen: NSScreen, image: CGImage, windowRects: [CGRect]) {
         self.screen = screen
@@ -119,7 +138,12 @@ final class ShotSession {
         f.inputImage = ci
         f.scale = Float(max(12, CGFloat(image.width) / screen.frame.width * 10))
         f.center = .zero
-        self.pixelated = f.outputImage.flatMap { CIContext().createCGImage($0.cropped(to: ci.extent), from: ci.extent) }
+        let ctx = CIContext()
+        self.pixelated = f.outputImage.flatMap { ctx.createCGImage($0.cropped(to: ci.extent), from: ci.extent) }
+        let b = CIFilter.gaussianBlur()
+        b.inputImage = ci.clampedToExtent()
+        b.radius = Float(CGFloat(image.width) / screen.frame.width * 14)
+        self.blurred = b.outputImage.flatMap { ctx.createCGImage($0.cropped(to: ci.extent), from: ci.extent) }
     }
 
     func windowAt(_ p: CGPoint) -> CGRect? { windowRects.first { $0.contains(p) } }
@@ -129,11 +153,12 @@ final class ShotSession {
         guard let sel = selection?.integral, sel.width > 1, sel.height > 1 else { return nil }
         let full = Image(decorative: image, scale: 1).resizable()
         let pix = pixelated.map { Image(decorative: $0, scale: 1).resizable() }
+        let blur = blurred.map { Image(decorative: $0, scale: 1).resizable() }
         let marks = self.marks
         let size = self.size
         let view = ZStack(alignment: .topLeading) {
             full.frame(width: size.width, height: size.height).offset(x: -sel.minX, y: -sel.minY)
-            Canvas { ctx, _ in drawMarks(marks, in: ctx, origin: sel.origin, pixelated: pix, fullSize: size) }
+            Canvas { ctx, _ in drawMarks(marks, in: ctx, origin: sel.origin, pixelated: pix, blurred: blur, fullSize: size) }
                 .frame(width: sel.width, height: sel.height)
         }
         .frame(width: sel.width, height: sel.height, alignment: .topLeading)
@@ -330,6 +355,7 @@ struct CaptureView: View {
         let s = session
         let full = Image(decorative: s.image, scale: 1).resizable()
         let pix = s.pixelated.map { Image(decorative: $0, scale: 1).resizable() }
+        let blur = s.blurred.map { Image(decorative: $0, scale: 1).resizable() }
         ZStack(alignment: .topLeading) {
             // Picture layer: owns the select / draw gestures. The toolbar sits above it
             // with no gestures attached, so its buttons get clicks right away.
@@ -347,7 +373,7 @@ struct CaptureView: View {
                 .allowsHitTesting(false)
 
                 Canvas { ctx, _ in
-                    drawMarks(s.marks + (s.draft.map { [$0] } ?? []), in: ctx, origin: .zero, pixelated: pix, fullSize: s.size)
+                    drawMarks(s.marks + (s.draft.map { [$0] } ?? []), in: ctx, origin: .zero, pixelated: pix, blurred: blur, fullSize: s.size)
                 }
                 .allowsHitTesting(false)
 
@@ -382,7 +408,7 @@ struct CaptureView: View {
             if let at = s.textAt {
                 TextField(L("输入文字，回车完成", "Type text, press Return to finish"), text: $session.textValue)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12 + s.width * 3, weight: .semibold))
+                    .font(.system(size: s.fontSize, weight: .semibold))
                     .foregroundStyle(s.color)
                     .frame(width: 260)
                     .padding(4)
@@ -401,7 +427,7 @@ struct CaptureView: View {
     }
 
     private func toolbarOffset(_ sel: CGRect) -> CGSize {
-        let w: CGFloat = 720, h: CGFloat = 52
+        let w: CGFloat = 560, h: CGFloat = 96
         var x = sel.maxX - w
         x = min(max(x, 8), session.size.width - w - 8)
         var y = sel.maxY + 8
@@ -413,7 +439,7 @@ struct CaptureView: View {
     private func commitText() {
         let s = session
         if let at = s.textAt, !s.textValue.trimmingCharacters(in: .whitespaces).isEmpty {
-            s.marks.append(ShotMark(kind: .text(at, s.textValue), color: s.color, width: s.width))
+            s.marks.append(ShotMark(kind: .text(at, s.textValue), color: s.color, width: s.fontSize))
         }
         s.textAt = nil
         s.textValue = ""
@@ -444,12 +470,19 @@ struct CaptureView: View {
             }
             guard sel.contains(start) else { return }
             switch tool {
-            case .rect: s.draft = ShotMark(kind: .rect(CGRect(x: min(start.x, q.x), y: min(start.y, q.y), width: abs(q.x - start.x), height: abs(q.y - start.y))), color: s.color, width: s.width)
-            case .mosaic: s.draft = ShotMark(kind: .mosaic(CGRect(x: min(start.x, q.x), y: min(start.y, q.y), width: abs(q.x - start.x), height: abs(q.y - start.y))), color: s.color, width: s.width)
-            case .arrow: s.draft = ShotMark(kind: .arrow(start, q), color: s.color, width: s.width)
+            case .rect: s.draft = ShotMark(kind: .rect(CGRect(x: min(start.x, q.x), y: min(start.y, q.y), width: abs(q.x - start.x), height: abs(q.y - start.y))), color: s.color, width: s.strokeWidth)
+            case .mosaic:
+                if s.mosaicBrush {
+                    // Paint: keep adding to the stroke for as long as the button is held.
+                    if case .mosaicPath(var pts)? = s.draft?.kind { pts.append(q); s.draft?.kind = .mosaicPath(pts) }
+                    else { s.draft = ShotMark(kind: .mosaicPath([start, q]), color: .clear, width: s.brushWidth, blur: s.mosaicBlur) }
+                } else {
+                    s.draft = ShotMark(kind: .mosaic(CGRect(x: min(start.x, q.x), y: min(start.y, q.y), width: abs(q.x - start.x), height: abs(q.y - start.y))), color: .clear, width: 0, blur: s.mosaicBlur)
+                }
+            case .arrow: s.draft = ShotMark(kind: .arrow(start, q), color: s.color, width: s.strokeWidth)
             case .pen:
                 if case .pen(var pts)? = s.draft?.kind { pts.append(q); s.draft?.kind = .pen(pts) }
-                else { s.draft = ShotMark(kind: .pen([start, q]), color: s.color, width: s.width) }
+                else { s.draft = ShotMark(kind: .pen([start, q]), color: s.color, width: s.strokeWidth) }
             case .text: break
             }
         }
@@ -510,38 +543,106 @@ private struct ShotToolbar: View {
     @Bindable var session: ShotSession
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(ShotTool.allCases) { t in
-                button(t.symbol, t.title, label: t.title, selected: session.tool == t) { session.tool = session.tool == t ? nil : t }
+        VStack(alignment: .leading, spacing: 4) {
+            // Row 1: tools and actions.
+            HStack(spacing: 2) {
+                ForEach(ShotTool.allCases) { t in
+                    button(t.symbol, t.title, label: t.title, selected: session.tool == t) { session.tool = session.tool == t ? nil : t }
+                }
+                divider
+                button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), label: L("撤销", "Undo"), selected: false) { ScreenshotController.shared.undo() }
+                button("pin", L("贴到屏幕", "Pin to screen"), label: L("贴图", "Pin"), selected: false) { ScreenshotController.shared.pin() }
+                button("square.and.arrow.down", L("保存", "Save"), label: L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
+                button("xmark", L("取消 Esc", "Cancel Esc"), label: L("取消", "Cancel"), selected: false) { ScreenshotController.shared.finish() }
+                Button { ScreenshotController.shared.copyAndClose() } label: {
+                    Label(L("复制", "Copy"), systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent).controlSize(.regular).help(L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Return / double-click)"))
+                .padding(.leading, 6)
             }
-            divider
-            ForEach(Array(ShotPalette.colors.enumerated()), id: \.offset) { _, c in
-                Circle().fill(c).frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(session.color == c ? Color.primary : Color.primary.opacity(0.2), lineWidth: session.color == c ? 2 : 1))
-                    .padding(3)
-                    .contentShape(Rectangle())
-                    .onTapGesture { session.color = c }
+            .padding(5)
+            .background(panel)
+
+            // Row 2: options for the selected tool, like WeChat's screenshot bar.
+            if let tool = session.tool {
+                HStack(spacing: 6) { options(for: tool) }
+                    .padding(.horizontal, 8).padding(.vertical, 5)
+                    .background(panel)
+                    .transition(.opacity)
             }
-            Menu {
-                ForEach([2, 3, 5, 8], id: \.self) { w in Button(L("\(w) 号", "Size \(w)")) { session.width = CGFloat(w) } }
-            } label: { Image(systemName: "lineweight") }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28).help(L("粗细", "Line width"))
-            divider
-            button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), label: L("撤销", "Undo"), selected: false) { ScreenshotController.shared.undo() }
-            button("pin", L("贴到屏幕", "Pin to screen"), label: L("贴图", "Pin"), selected: false) { ScreenshotController.shared.pin() }
-            button("square.and.arrow.down", L("保存", "Save"), label: L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
-            button("xmark", L("取消 Esc", "Cancel Esc"), label: L("取消", "Cancel"), selected: false) { ScreenshotController.shared.finish() }
-            Button { ScreenshotController.shared.copyAndClose() } label: {
-                Label(L("复制", "Copy"), systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
-            }
-            .buttonStyle(.borderedProminent).controlSize(.small).help(L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Return / double-click)"))
-            .padding(.leading, 4)
         }
-        .padding(5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.regularMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
-        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
         .tint(Palette.theme)
+        .animation(.easeOut(duration: 0.15), value: session.tool)
+    }
+
+    private var panel: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.regularMaterial)
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
+            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+    }
+
+    @ViewBuilder
+    private func options(for tool: ShotTool) -> some View {
+        switch tool {
+        case .text:
+            ForEach(Array([(14, "小", "S"), (20, "中", "M"), (28, "大", "L"), (40, "特大", "XL"), (56, "超大", "XXL")].enumerated()), id: \.offset) { _, f in
+                chip(selected: session.fontSize == CGFloat(f.0), help: L("字号 \(f.0)", "Font size \(f.0)")) {
+                    Text("A").font(.system(size: CGFloat(8 + f.0 / 4), weight: .semibold)).frame(width: 20, height: 20)
+                } action: { session.fontSize = CGFloat(f.0) }
+            }
+            divider
+            colors
+        case .mosaic:
+            segmented([(L("涂抹", "Brush"), true), (L("框选", "Box"), false)], selected: session.mosaicBrush) { session.mosaicBrush = $0 }
+            divider
+            segmented([(L("马赛克", "Pixelate"), false), (L("模糊", "Blur"), true)], selected: session.mosaicBlur) { session.mosaicBlur = $0 }
+            if session.mosaicBrush {
+                divider
+                sizes(dots: [8, 12, 17], help: [L("细", "Small"), L("中", "Medium"), L("粗", "Large")])
+            }
+        case .rect, .arrow, .pen:
+            sizes(dots: [4, 7, 11], help: [L("细", "Thin"), L("中", "Medium"), L("粗", "Thick")])
+            divider
+            colors
+        }
+    }
+
+    private var colors: some View {
+        ForEach(Array(ShotPalette.colors.enumerated()), id: \.offset) { _, c in
+            Circle().fill(c).frame(width: 16, height: 16)
+                .overlay(Circle().stroke(session.color == c ? Color.primary : Color.primary.opacity(0.2), lineWidth: session.color == c ? 2 : 1))
+                .padding(3)
+                .contentShape(Rectangle())
+                .onTapGesture { session.color = c }
+        }
+    }
+
+    private func sizes(dots: [CGFloat], help: [String]) -> some View {
+        ForEach(0..<3, id: \.self) { i in
+            chip(selected: session.strokeLevel == i, help: help[i]) {
+                Circle().fill(Color.primary).frame(width: dots[i], height: dots[i]).frame(width: 22, height: 22)
+            } action: { session.strokeLevel = i }
+        }
+    }
+
+    private func segmented(_ items: [(String, Bool)], selected: Bool, set: @escaping (Bool) -> Void) -> some View {
+        HStack(spacing: 2) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, it in
+                chip(selected: selected == it.1, help: it.0) {
+                    Text(it.0).font(.system(size: 12, weight: .medium)).padding(.horizontal, 6).frame(height: 22)
+                } action: { set(it.1) }
+            }
+        }
+    }
+
+    private func chip<V: View>(selected: Bool, help: String, @ViewBuilder content: () -> V, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            content()
+                .padding(2)
+                .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
+                .contentShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain).help(help)
     }
 
     private var divider: some View { Divider().frame(height: 20).padding(.horizontal, 4) }

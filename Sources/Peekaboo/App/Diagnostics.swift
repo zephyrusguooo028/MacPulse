@@ -220,13 +220,14 @@ enum ShotDemo {
         let s = ShotSession(screen: screen, image: cg, windowRects: [CGRect(x: 120, y: 120, width: 640, height: 400), CGRect(x: 820, y: 160, width: 360, height: 260)])
         s.selection = CGRect(x: 100, y: 100, width: 700, height: 460)
         s.phase = .editing
-        s.tool = .arrow
+        s.tool = .mosaic
         s.marks = [
             ShotMark(kind: .rect(CGRect(x: 140, y: 170, width: 300, height: 60)), color: ShotPalette.colors[0], width: 3),
             ShotMark(kind: .arrow(CGPoint(x: 600, y: 480), CGPoint(x: 450, y: 220)), color: ShotPalette.colors[1], width: 4),
             ShotMark(kind: .pen((0..<40).map { CGPoint(x: 160 + Double($0) * 8, y: 420 + sin(Double($0) / 3) * 18) }), color: ShotPalette.colors[2], width: 3),
-            ShotMark(kind: .mosaic(CGRect(x: 145, y: 205, width: 480, height: 42)), color: .clear, width: 3),
-            ShotMark(kind: .text(CGPoint(x: 470, y: 330), "这里很重要"), color: ShotPalette.colors[3], width: 3),
+            ShotMark(kind: .mosaicPath((0..<30).map { CGPoint(x: 150 + Double($0) * 16, y: 225 + sin(Double($0) / 2) * 4) }), color: .clear, width: 26),
+            ShotMark(kind: .mosaic(CGRect(x: 600, y: 380, width: 150, height: 120)), color: .clear, width: 0, blur: true),
+            ShotMark(kind: .text(CGPoint(x: 470, y: 330), "这里很重要"), color: ShotPalette.colors[3], width: 28),
         ]
         s.mouse = CGPoint(x: 500, y: 300)
         let host = NSHostingView(rootView: CaptureView(session: s).environment(AppState.shared))

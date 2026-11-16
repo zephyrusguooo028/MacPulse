@@ -41,7 +41,7 @@ struct PopoverFooter: View {
     var body: some View {
         HStack(spacing: 6) {
             Button { WindowManager.shared.show(.overview) } label: {
-                Text(L("打开主窗口", "Open main window")).frame(maxWidth: .infinity)
+                Text(L("打开主窗口", "Open app")).lineLimit(1).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             Button { WindowManager.shared.show(.cleanup) } label: {
@@ -106,15 +106,16 @@ struct CompactPopover: View {
                     m.disk.usedFraction > 0.9 ? Palette.danger : Palette.disk)
                 HStack(spacing: 10) {
                     icon("network")
-                    Text(L("网络", "Net")).frame(width: 34, alignment: .leading)
+                    Text(L("网络", "Net")).frame(width: Loc.isEnglish ? 54 : 34, alignment: .leading)
                     Label(Fmt.rate(m.netIn), systemImage: "arrow.down").foregroundStyle(Palette.netIn)
                     Spacer()
                     Label(Fmt.rate(m.netOut), systemImage: "arrow.up").foregroundStyle(Palette.netOut)
                 }
                 .font(.system(size: 12)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.8)
                 HStack(spacing: 10) {
                     icon("thermometer.medium")
-                    Text(L("其他", "Other")).frame(width: 34, alignment: .leading)
+                    Text(L("其他", "Other")).frame(width: Loc.isEnglish ? 54 : 34, alignment: .leading)
                     Text(m.temperature.map { String(format: "%.0f°C", $0) } ?? "—")
                     Spacer()
                     Text("GPU \(m.gpu.map { Fmt.pct($0) } ?? "—")")
@@ -145,7 +146,7 @@ struct CompactPopover: View {
     private func row(_ symbol: String, _ title: String, _ v: Double, _ value: String, _ color: Color, note: String? = nil) -> some View {
         HStack(spacing: 10) {
             icon(symbol)
-            Text(title).frame(width: 34, alignment: .leading)
+            Text(title).frame(width: Loc.isEnglish ? 54 : 34, alignment: .leading)
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.08))

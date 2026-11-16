@@ -208,6 +208,8 @@ public sealed class NetworkPage : PageView
         var names = new Dictionary<int, string>();
         foreach (var s in sockets)
         {
+            // PID 0 only holds closed connections waiting to time out (TIME_WAIT); not an app.
+            if (s.Pid == 0) continue;
             string name; string? path = null;
             if (owner.TryGetValue(s.Pid, out var o)) { name = o.name; path = o.path; }
             else if (s.Pid == 0) name = L("系统空闲进程", "System Idle Process");

@@ -70,6 +70,12 @@ enum Snapshot {
                 savePopover(st, to: dir.appendingPathComponent("0-popover-\(st.rawValue).png"))
             }
 
+            OnboardingWindow.show()
+            try? await Task.sleep(for: .seconds(2))
+            if let v = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<AnyView> || $0.title.contains("Peekaboo") && $0 !== WindowManager.shared.window })?.contentView {
+                saveView(v, to: dir.appendingPathComponent("0-onboarding.png"))
+            }
+            OnboardingWindow.close()
             if CommandLine.arguments.contains("--popover-only") { NSApp.terminate(nil); return }
             WindowManager.shared.show(.overview)
             try? await Task.sleep(for: .seconds(2))
@@ -104,6 +110,20 @@ enum Snapshot {
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("5-cleanup.png"))
 
+            app.tab = .duplicates
+            if Demo.active { DuplicatesModel.shared.scan() }   // a real scan of personal folders could take minutes
+            try? await Task.sleep(for: .seconds(1))
+            while DuplicatesModel.shared.scanning { try? await Task.sleep(for: .milliseconds(500)) }
+            try? await Task.sleep(for: .seconds(1))
+            saveWindow(to: dir.appendingPathComponent("13-duplicates.png"))
+
+            app.tab = .uninstall
+            try? await Task.sleep(for: .seconds(1))
+            while UninstallModel.shared.loading { try? await Task.sleep(for: .milliseconds(500)) }
+            if Demo.active, let first = UninstallModel.shared.apps.max(by: { ($0.size ?? 0) < ($1.size ?? 0) }) { UninstallModel.shared.select(first) }
+            try? await Task.sleep(for: .seconds(1.5))
+            saveWindow(to: dir.appendingPathComponent("14-uninstall.png"))
+
             TypingMonitor.shared.loadDemo()
             app.tab = .typing
             try? await Task.sleep(for: .seconds(1))
@@ -112,6 +132,16 @@ enum Snapshot {
             app.tab = .screenshot
             try? await Task.sleep(for: .seconds(1))
             saveWindow(to: dir.appendingPathComponent("8-screenshot.png"))
+
+            app.tab = .clipboard; try? await Task.sleep(for: .seconds(1)); saveWindow(to: dir.appendingPathComponent("10-clipboard.png"))
+
+            app.tab = .battery
+            try? await Task.sleep(for: .seconds(1.5))
+            saveWindow(to: dir.appendingPathComponent("11-battery.png"))
+
+            app.tab = .network
+            try? await Task.sleep(for: .seconds(7))
+            saveWindow(to: dir.appendingPathComponent("12-network.png"))
 
             app.tab = .settings
             try? await Task.sleep(for: .seconds(1))

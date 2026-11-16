@@ -21,12 +21,18 @@ public static class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Startup += (_, _) =>
         {
+            ThemeStyles.Install(app);
+            ThemeStyles.ThemeChanged += () => { MainWindow.ThemeChanged(); TrayController.Shared.RebuildMenus(); };
+            Settings.Changed += () => ThemeStyles.Apply(app);   // accent colour choice
             var m = SystemMonitor.Shared;
             m.Ticked += Alerts.Check;
             m.Start();
             TrayController.Shared.Install();
             TypingMonitor.Shared.Apply();
             Screenshot.ApplyHotkey();
+            ClipboardService.Start();
+            DesktopWidget.Start();
+            Updater.Start();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };
@@ -131,6 +137,17 @@ static class Snapshot
         await Task.Delay(1000);
         Save(MainWindow.Instance!, Path.Combine(dir, "5-cleanup.png"));
 
+        // Duplicates is captured before a scan: scanning personal folders could take minutes.
+        MainWindow.Instance!.Navigate(Page.Duplicates);
+        await Task.Delay(1500);
+        Save(MainWindow.Instance!, Path.Combine(dir, "13-duplicates.png"));
+
+        MainWindow.Instance!.Navigate(Page.Uninstall);
+        await Task.Delay(1000);
+        while (UninstallModel.Shared.Loading) await Task.Delay(500);
+        await Task.Delay(1000);
+        Save(MainWindow.Instance!, Path.Combine(dir, "14-uninstall.png"));
+
         // Exercise the keyboard hook: simulate keys and check they were counted.
         Settings.Shared.TypingEnabled = true;
         TypingMonitor.Shared.Apply();
@@ -147,6 +164,16 @@ static class Snapshot
         await Task.Delay(1500);
         File.WriteAllText(Path.Combine(dir, "typing.txt"), $"hook running={TypingMonitor.Shared.Running} counted={TypingMonitor.Shared.Today.Total - before} of 41");
         Save(MainWindow.Instance!, Path.Combine(dir, "7-typing.png"));
+
+        MainWindow.Instance!.Navigate(Page.Clipboard); await Task.Delay(1500); Save(MainWindow.Instance!, Path.Combine(dir, "10-clipboard.png"));
+
+        MainWindow.Instance!.Navigate(Page.Battery);
+        await Task.Delay(2500);
+        Save(MainWindow.Instance!, Path.Combine(dir, "11-battery.png"));
+
+        MainWindow.Instance!.Navigate(Page.Network);
+        await Task.Delay(4000);
+        Save(MainWindow.Instance!, Path.Combine(dir, "12-network.png"));
 
         MainWindow.Instance!.Navigate(Page.Settings);
         await Task.Delay(1500);
@@ -189,6 +216,7 @@ static class ShotDemo
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Startup += async (_, _) =>
         {
+            ThemeStyles.Install(app);
             try
             {
                 var b = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;

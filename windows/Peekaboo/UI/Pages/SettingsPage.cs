@@ -15,6 +15,7 @@ public sealed class SettingsPage : PageView
 
     public override void Shown()
     {
+        Updater.Changed += Build;
         TrayController.Shared.Viewer(true);
         TrayController.Shared.FrameChanged += Animate;
         Build();
@@ -22,6 +23,7 @@ public sealed class SettingsPage : PageView
 
     public override void Hidden()
     {
+        Updater.Changed -= Build;
         TrayController.Shared.Viewer(false);
         TrayController.Shared.FrameChanged -= Animate;
     }
@@ -159,13 +161,14 @@ public sealed class SettingsPage : PageView
             H(8, T(L("超过", "Projects untouched for over"), 13), Stepper(() => S.StaleProjectDays, v => S.StaleProjectDays = v, 7, 365, 7, L(" 天", " days")), T(L("没改动的项目，默认勾选它的依赖和构建产物", "get their dependencies and build output selected by default"), 13))));
 
         var about = Card(L("关于", "About"), "", V(6,
-            Note(L("Peekaboo 只在本机读取系统信息，不联网、不上传任何数据。清理默认移到回收站，并且永远不碰系统目录和用户目录之外的文件。", "Peekaboo only reads system info on this PC. It never goes online or uploads any data. Cleanup moves items to the Recycle Bin by default and never touches system folders or anything outside your user folder.")),
+            Note(L("Peekaboo 只在本机读取系统信息，不上传任何数据；唯一的联网是检查更新（可关闭）。清理默认移到回收站，并且永远不碰系统目录和用户目录之外的文件。", "Peekaboo reads system information locally and never uploads anything; the only network access is the optional update check. Cleanup moves items to the Recycle Bin by default and never touches system folders or anything outside your user folder.")),
             Note(L("CPU 温度在 Windows 上需要管理员权限才能读取，所以这里不显示。", "Reading CPU temperature on Windows requires administrator rights, so it isn’t shown here.")),
             Note(L("数据保存在 ", "Data is stored in ") + Paths.Support)));
 
-        var page = V(16, PageHeader(L("设置", "Settings"), "Peekaboo 1.0"), language, tray, general, alerts, rules,
+        var page = V(16, PageHeader(L("设置", "Settings"), "Peekaboo " + Updater.Current), language, tray, general, alerts, rules,
             PathList(L("项目目录", "Project folders"), "", L("在这些目录里自动找开发项目（最多往下找 4 层）。", "Peekaboo looks for development projects in these folders (up to 4 levels deep)."), S.ProjectRoots),
             PathList(L("白名单", "Whitelist"), "", L("这些位置永远不会被清理。也可以在任意列表里右键「加入白名单」。", "These locations are never cleaned. You can also right-click any item in a list and choose “Add to whitelist”."), S.Whitelist),
+            UpdateCard(), ClipboardSettingsCard.Build(), WidgetSettingsCard.Build(),
             about);
         page.MaxWidth = 820; page.HorizontalAlignment = HorizontalAlignment.Left;
         Content = page;
@@ -204,5 +207,32 @@ public sealed class SettingsPage : PageView
             Save();
         }, glyph: "");
         return Card(title, glyph, s, add);
+    }
+
+    UIElement UpdateCard()
+    {
+        var auto = Check(L("自动检查更新", "Check automatically"), S.AutoUpdate, on => { S.AutoUpdate = on; S.Save(); });
+        var body = V(10, Row(T(L($"当前版本 {Updater.Current}", $"Version {Updater.Current}"), 13), auto));
+        switch (Updater.State)
+        {
+            case Updater.Status.Checking: body.Children.Add(T(L("正在检查…", "Checking…"), 12.5, color: Theme.Secondary)); break;
+            case Updater.Status.Available:
+                body.Children.Add(T(L($"有新版本 {Updater.NewVersion}", $"Version {Updater.NewVersion} is available"), 14, FontWeights.SemiBold, Theme.AccentBrush));
+                if (Updater.Notes.Length > 0) body.Children.Add(Note(Updater.Notes));
+                body.Children.Add(H(8, Btn(L("下载并安装", "Download and install"), () => _ = Updater.Install(), primary: true),
+                                     T(L("会自动替换并重新打开，设置会保留。", "Peekaboo replaces itself and reopens; settings are kept."), 12, color: Theme.Secondary)));
+                break;
+            case Updater.Status.Downloading: body.Children.Add(V(4, T(L("正在下载…", "Downloading…"), 12.5), Bar(Updater.Progress, Theme.AccentColor, 6))); break;
+            case Updater.Status.Installing: body.Children.Add(T(L("正在安装，马上重新打开…", "Installing, reopening shortly…"), 12.5)); break;
+            default:
+                var row = H(10, Btn(L("检查更新", "Check for updates"), () => _ = Updater.Check()));
+                if (Updater.State == Updater.Status.UpToDate) row.Children.Add(T(L("已经是最新版本", "You're up to date"), 12.5, color: Theme.B(Theme.DiskC)));
+                if (Updater.State == Updater.Status.Failed && Updater.Error is { } err) row.Children.Add(T(err, 12, color: Theme.B(Theme.DangerC)));
+                body.Children.Add(row);
+                break;
+        }
+        body.Children.Add(Note(L("检查更新时只访问 GitHub 上的公开版本信息，不上传任何数据。关掉自动检查后 Peekaboo 完全不联网。",
+                                 "Update checks only read public release info from GitHub and send no data. With automatic checks off, Peekaboo never goes online.")));
+        return Card(L("更新", "Updates"), "\uE896", body);
     }
 }

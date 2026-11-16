@@ -20,6 +20,8 @@ public sealed class Settings
     public bool IconTint { get; set; }
     public ThemeChoice Theme { get; set; } = ThemeChoice.System;
     public AppLanguage Language { get; set; } = AppLanguage.System;
+    public bool AutoUpdate { get; set; } = true;
+    public DateTime? LastUpdateCheck { get; set; }
     public double SampleInterval { get; set; } = 2;
     public bool TypingEnabled { get; set; }
     public int TypingGoal { get; set; } = 10000;

@@ -513,6 +513,7 @@ public sealed class ShotOverlay : Window
         }
         row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
         row.Children.Add(Tool("", L("撤销 Ctrl+Z", "Undo Ctrl+Z"), false, Undo, L("撤销", "Undo")));
+        row.Children.Add(Tool("\uE8D3", L("识别图中文字", "Recognize text"), false, Ocr, L("识字", "OCR")));
         row.Children.Add(Tool("", L("贴到屏幕", "Pin to screen"), false, Pin, L("贴图", "Pin")));
         row.Children.Add(Tool("", L("保存", "Save"), false, Save, L("保存", "Save")));
         row.Children.Add(Tool("", L("取消 Esc", "Cancel Esc"), false, Screenshot.CloseAll, L("取消", "Cancel")));
@@ -645,6 +646,15 @@ public sealed class ShotOverlay : Window
         Clipboard.SetImage(img);
         Screenshot.CloseAll();
         Reveal(file);
+    }
+
+    /// Recognize text in the selection (implemented in UI/ShotOcr.cs).
+    void Ocr()
+    {
+        var img = Export();
+        if (img is null) return;
+        Screenshot.CloseAll();
+        ShotOcr.Run(img);
     }
 
     void Pin()

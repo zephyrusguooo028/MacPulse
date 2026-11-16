@@ -17,6 +17,20 @@ public abstract class PageView : ContentControl
 public sealed class MainWindow : Window
 {
     static MainWindow? _instance;
+    bool _allowClose;
+
+    /// Light / dark switched: rebuild the window so every brush is re-read.
+    public static void ThemeChanged()
+    {
+        if (_instance is null) return;
+        var old = _instance;
+        bool visible = old.IsVisible;
+        var page = old._current;
+        old._allowClose = true;
+        old.Close();
+        _instance = null;
+        if (visible) Show(page);
+    }
     readonly ContentControl _content = new();
     readonly StackPanel _nav = new();
     readonly Dictionary<Page, Border> _navItems = new();
@@ -61,7 +75,8 @@ public sealed class MainWindow : Window
         side.Children.Add(brand);
         DockPanel.SetDock(_footer, Dock.Bottom);
         side.Children.Add(_footer);
-        side.Children.Add(_nav);
+        // Many pages now: let the list scroll instead of sliding under the footer.
+        side.Children.Add(new ScrollViewer { Content = _nav, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         BuildNav();
         root.Children.Add(side);
         TrayController.Shared.FrameChanged += AnimateBrand;
@@ -74,7 +89,7 @@ public sealed class MainWindow : Window
 
         SourceInitialized += (_, _) => Native.RoundCorners(this);
         SystemMonitor.Shared.Ticked += OnTick;
-        Closing += (_, e) => { e.Cancel = true; Hide(); _page?.Hidden(); _page = null; };
+        Closing += (_, e) => { if (_allowClose) { _page?.Hidden(); SystemMonitor.Shared.Ticked -= OnTick; return; } e.Cancel = true; Hide(); _page?.Hidden(); _page = null; };
         IsVisibleChanged += (_, _) => { if (IsVisible && _page is null) Navigate(_current); };
         OnTick();
     }
@@ -87,9 +102,9 @@ public sealed class MainWindow : Window
             if (title.Length > 0) { var h = T(title, 11, FontWeights.SemiBold, Theme.Tertiary); h.Margin = new Thickness(10, 10, 0, 4); _nav.Children.Add(h); }
             foreach (var p in pages) _nav.Children.Add(NavItem(p));
         }
-        Group(L("监控", "Monitor"), Page.Overview, Page.Processes);
-        Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup);
-        Group(L("工具", "Tools"), Page.Screenshot, Page.Typing);
+        Group(L("监控", "Monitor"), Page.Overview, Page.Processes, Page.Battery, Page.Network);
+        Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup, Page.Duplicates, Page.Uninstall);
+        Group(L("工具", "Tools"), Page.Screenshot, Page.Clipboard, Page.Typing);
         var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
         _nav.Children.Add(NavItem(Page.Settings));
     }
@@ -111,6 +126,11 @@ public sealed class MainWindow : Window
         Page.Cleanup => (L("清理", "Cleanup"), "\uE74D", Color.FromRgb(237, 92, 140)),
         Page.Typing => (L("打字", "Typing"), "\uE765", Theme.MemC),
         Page.Screenshot => (L("截图", "Screenshot"), "\uE722", Color.FromRgb(64, 178, 217)),
+        Page.Battery => (L("电池", "Battery"), "\uEBA7", Color.FromRgb(77, 191, 89)),
+        Page.Network => (L("网络", "Network"), "\uE968", Theme.NetInC),
+        Page.Duplicates => (L("重复文件", "Duplicates"), "\uE8C8", Color.FromRgb(217, 140, 51)),
+        Page.Uninstall => (L("卸载应用", "Uninstall"), "\uE74D", Color.FromRgb(204, 77, 89)),
+        Page.Clipboard => (L("剪贴板", "Clipboard"), "\uE77F", Color.FromRgb(115, 128, 242)),
         _ => (L("设置", "Settings"), "\uE713", Color.FromRgb(140, 143, 153)),
     };
 
@@ -119,13 +139,13 @@ public sealed class MainWindow : Window
         var (title, glyph, tile) = Meta(p);
         var icon = new Border
         {
-            Width = 24, Height = 24, CornerRadius = new CornerRadius(6),
+            Width = 22, Height = 22, CornerRadius = new CornerRadius(6),
             Background = new LinearGradientBrush(Color.FromArgb(255, (byte)Math.Min(255, tile.R + 25), (byte)Math.Min(255, tile.G + 25), (byte)Math.Min(255, tile.B + 25)), tile, 90),
             Child = new TextBlock { Text = glyph, FontFamily = Theme.IconFont, FontSize = 12, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
         };
         var badge = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(6, 1, 6, 1), Visibility = Visibility.Collapsed, Child = T("", 10.5, FontWeights.Medium, Theme.Secondary) };
         _badges[p] = badge;
-        var b = new Border { CornerRadius = new CornerRadius(7), Padding = new Thickness(8, 6, 8, 6), Margin = new Thickness(0, 1, 0, 1), Cursor = Cursors.Hand, Background = Brushes.Transparent,
+        var b = new Border { CornerRadius = new CornerRadius(7), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 1, 0, 1), Cursor = Cursors.Hand, Background = Brushes.Transparent,
                              Child = Row(H(10, icon, T(title, 13.5)), badge) };
         b.MouseLeftButtonUp += (_, _) => Navigate(p);
         b.MouseEnter += (_, _) => { if (_current != p) b.Background = Theme.Hover; };
@@ -172,6 +192,11 @@ public sealed class MainWindow : Window
             Page.Processes => new ProcessesPage(),
             Page.Cleanup => new CleanupPage(),
             Page.Typing => new TypingPage(),
+            Page.Battery => new BatteryPage(),
+            Page.Network => new NetworkPage(),
+            Page.Duplicates => new DuplicatesPage(),
+            Page.Uninstall => new UninstallPage(),
+            Page.Clipboard => new ClipboardPage(),
             Page.Screenshot => new ScreenshotPage(),
             _ => new SettingsPage(),
         };
@@ -191,8 +216,13 @@ public sealed class MainWindow : Window
         long rec = CleanupModel.Shared.All.Where(i => i.Recommended).Sum(i => i.Size);
         SetBadge(Page.Cleanup, rec > 0 ? Fmt.Bytes(rec) : null);
         SetBadge(Page.Typing, TypingMonitor.Shared.Running ? TypingMonitor.Shared.Today.Total.ToString("N0") : null);
+        SetBadge(Page.Battery, BatteryPage.Badge);
+        SetBadge(Page.Network, NetworkPage.Badge);
+        SetBadge(Page.Duplicates, DuplicatesPage.Badge);
+        SetBadge(Page.Uninstall, null);
+        SetBadge(Page.Settings, Updater.State == Updater.Status.Available ? L("新版本", "Update") : null, Updater.State == Updater.Status.Available);
+        SetBadge(Page.Clipboard, ClipboardPage.Badge);
         SetBadge(Page.Screenshot, null); // the shortcut is shown on the Screenshot page; it crowds the label here
-        SetBadge(Page.Settings, null);
 
         FrameworkElement Meter(string glyph, string title, double v, string value, Color c) =>
             V(4, Row(H(5, Glyph(glyph, 11), T(title, 11, FontWeights.Medium)), T(value, 11, color: Theme.Secondary)), Bar(v, c, 5));

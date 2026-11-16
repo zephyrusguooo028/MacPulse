@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacPulse",
+    name: "Peekaboo",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "MacPulse",
-            path: "Sources/MacPulse",
+            name: "Peekaboo",
+            path: "Sources/Peekaboo",
             linkerSettings: [.linkedFramework("IOKit")]
         )
     ]

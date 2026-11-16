@@ -1,68 +1,199 @@
-# MacPulse
+<p align="center"><img src="docs/icon.png" width="128" alt="Peekaboo"></p>
 
-A native macOS menu bar app: system monitor, disk analyzer and cleaner, written in SwiftUI.
+<h1 align="center">Peekaboo</h1>
 
-原生 macOS 菜单栏工具：系统监控 + 磁盘空间分析 + 安全清理。
+<p align="center">
+一只住在菜单栏里的小幽灵：系统监控、磁盘分析、安全清理、截图贴图、打字统计。<br>
+A little ghost in your menu bar: system monitor, disk analyzer, safe cleaner, screenshots and typing stats.<br><br>
+macOS 14+ · Windows 10/11 · 免费开源 Free & open source (MIT)
+</p>
 
-![Animated menu bar icons](docs/icons.png)
+<p align="center">
+<a href="#中文">中文</a> · <a href="#english">English</a> · <a href="https://github.com/zephyrusguooo028/Peekaboo/releases/latest">下载 Download</a>
+</p>
 
-## 功能 Features
+<p align="center">
+<img src="docs/screenshots/mac-zh/1-overview.png" width="760" alt="Overview">
+</p>
 
-- **菜单栏动画图标**：史莱姆、小幽灵、小鸡、小鲸鱼、火箭、心跳、脉搏线、风扇、均衡器。CPU 越忙动画越快，可选按负载变色。
-- **自己勾选显示内容**：CPU、CPU 走势图、内存、磁盘剩余、网速、温度、GPU、电池。
-- **三种弹出面板**：紧凑列表 / 大数字卡片 / 大图表。
-- **概览**：实时曲线、每个核心的负载（超大核 / 性能核 / 能效核）、24 小时历史、内存构成。
-- **磁盘**：用方块图（treemap）逐层查看空间占用，右键在 Finder 中显示或移到废纸篓。
-- **项目**：自动识别开发项目，区分源码 / Git 历史 / 依赖和构建产物；`dist`、`build` 只有在 `.gitignore` 里才算可安全删除。
-- **进程**：按应用汇总（把同一个应用的多个子进程合并成一行），可以退出或强制退出。
-- **清理**：开发缓存（npm / pip / Go / Cargo …）、项目产物、应用缓存、日志、下载里的旧文件、大文件。默认移到废纸篓；只动用户目录，受保护目录和白名单永远跳过。
-- **提醒**：磁盘不足、内存压力紧张、CPU 持续高负载、每周可清理空间提示。
-- **开机自启**，不联网，不收集任何数据。
+---
 
-Menu bar icons that animate faster as CPU load rises, user-selectable metrics, three popover layouts, a 24-hour history, a treemap disk explorer, per-project dependency/build-artifact sizes, per-app process grouping, and a cleaner that moves things to the Trash by default and never touches anything outside your home folder. No network access, no telemetry.
+## 中文
 
-## 安装 Install
+### 有什么
 
-需要 macOS 14+ 和 Command Line Tools（不需要完整的 Xcode）：
+| | |
+|---|---|
+| **菜单栏小图标** | 9 种动画图标（史莱姆、小幽灵、小鸡、小鲸鱼、火箭、心跳……），CPU 越忙跳得越快；旁边显示什么由你勾选：CPU、内存、磁盘剩余、网速、温度、GPU、电池、今日打字数 |
+| **概览** | 实时曲线、每个核心的负载、过去 24 小时历史、内存构成 |
+| **磁盘** | 方块图看清空间都去哪了，一层层点进去，右键直接移到废纸篓 |
+| **项目** | 自动找出你的开发项目，分开显示源码、Git 历史、node_modules / dist 等可重新生成的东西 |
+| **清理** | 开发缓存、项目依赖和构建产物、应用缓存、日志、下载里的旧文件、大文件；还能找出一直吃 CPU 或长时间闲置的大内存应用 |
+| **截图** | 自定义快捷键，自动识别窗口，矩形 / 箭头 / 画笔 / 文字 / 马赛克（涂抹或框选，方块或模糊），复制、保存或贴在屏幕上 |
+| **打字统计** | 每天按键数、每小时分布、键盘热力图、最常用的键和应用。**只计数，从不记录内容** |
+| **其他** | 中英文界面、8 种主题色、提醒（磁盘不足 / 内存紧张 / CPU 持续高）、开机自启，不联网 |
 
-Requires macOS 14+ and the Xcode Command Line Tools (full Xcode is not required):
+<p>
+<img src="docs/screenshots/mac-zh/0-popover-compact.png" width="300" alt="菜单栏弹窗">
+<img src="docs/screenshots/mac-zh/5-cleanup.png" width="520" alt="清理">
+</p>
+
+### 下载安装
+
+到 [Releases](https://github.com/zephyrusguooo028/Peekaboo/releases/latest) 下载：
+
+**macOS**（`Peekaboo.dmg`）
+
+1. 双击打开 dmg，把 **Peekaboo** 拖到「应用程序」文件夹。
+2. 第一次打开时 macOS 会提示「无法验证开发者」，因为 Peekaboo 没有付费的苹果开发者签名。打开 **系统设置 › 隐私与安全性**，在页面下方点「仍要打开」。
+   也可以在终端里执行一次：`xattr -dr com.apple.quarantine /Applications/Peekaboo.app`
+3. Peekaboo 只出现在菜单栏（右上角），不占程序坞。点一下小图标就能看到面板。
+
+**Windows**（`Peekaboo.exe`，单文件，不用安装）
+
+1. 下载后双击运行。Windows 可能弹出「Windows 已保护你的电脑」，点「更多信息 › 仍要运行」（同样是因为没有付费代码签名）。
+2. 图标在任务栏右下角的托盘里。Windows 11 会把新图标收进「^」里，可以把它拖到任务栏上常驻。
+3. 想开机自启：设置 › 通用 › 开机时自动启动。
+
+### 使用教程
+
+**1. 菜单栏 / 托盘**
+- 点小图标打开面板：CPU、内存、磁盘、网络，以及占用最高的应用。
+- 设置 › 菜单栏 里挑一个喜欢的动画图标，勾选旁边要显示的数值。Windows 托盘不能显示文字，所以每个勾选的数值会单独占一个小图标。
+
+**2. 磁盘**
+- 点「扫描用户目录」，方块越大的文件夹越占空间；点方块进入，左上角返回。
+- 右键任意方块：在 Finder 中显示、移到废纸篓、加入白名单（永不清理）。
+
+<img src="docs/screenshots/mac-zh/2-disk.png" width="640" alt="磁盘">
+
+**3. 项目**
+- 默认在「文稿」「桌面」「Code」等目录里找项目（设置里可改）。
+- `dist`、`build` 这类目录只有写在 `.gitignore` 里才算安全，否则会提示你确认，避免误删源码。
+
+**4. 清理**
+- 打开就会自动扫描，**扫描只读不删**。推荐项会默认勾选，点「清理所选」前会再确认一次。
+- 默认「移到废纸篓」，可以恢复；清空废纸篓后才真正腾出空间。也可以选「直接删除」。
+- 「释放内存和 CPU」：列出近几分钟一直很忙的程序，以及占内存大又很久没用的应用，勾选后像 ⌘Q 一样正常退出，不会强杀。
+- 只会动你的用户目录；系统目录、受保护目录和白名单永远跳过。
+
+**5. 截图**
+- 默认快捷键 **⌥⇧A**（Windows 是 **Alt+Shift+A**），可以在「截图」页自己录制。
+- 鼠标移到窗口上会自动高亮，单击截这个窗口；拖动自由框选。
+- 第一排是工具，第二排是当前工具的选项：粗细和颜色、字号、马赛克的「涂抹 / 框选」和「马赛克 / 模糊」。
+- 回车或双击 = 复制；⌘Z / Ctrl+Z 撤销；Esc 取消；右键重新框选。
+- 「贴图」把截图钉在屏幕最上层：拖动移动、滚轮缩放、双击关闭、右键调透明度。
+- macOS 第一次截图需要允许「屏幕录制」权限。
+
+<img src="docs/screenshots/mac-zh/9-screenshot-editor.png" width="640" alt="截图编辑">
+
+**6. 打字统计**
+- 默认关闭。在「打字」页打开开关。
+- macOS 需要允许「输入监控」权限：系统设置 › 隐私与安全性 › 输入监控 › 打开 Peekaboo。授权后页面会自动开始统计，没反应就点「重启 Peekaboo」。
+- 只记录「哪个键按了几次、在哪个应用里」，不记录按键顺序，所以无法还原你打了什么。
+
+<img src="docs/screenshots/mac-zh/7-typing.png" width="640" alt="打字统计">
+
+**7. 设置**
+- 语言（跟随系统 / 简体中文 / English）、主题色、动画图标、菜单栏内容、提醒阈值、清理规则、项目目录、白名单。
+
+### 隐私
+
+- 不联网，没有任何统计或上报。所有数据只保存在本机：
+  macOS `~/Library/Application Support/Peekaboo/`，Windows `%LocalAppData%\Peekaboo\`。
+- 打字统计只计数，不记录内容；可以随时一键清空。
+- 代码全部开源，欢迎检查。
+
+### 常见问题
+
+- **打字统计一直显示「未开始」？** 到 系统设置 › 隐私与安全性 › 输入监控，确认 Peekaboo 已打开；如果列表里有旧条目，先点「−」删掉再重新授权，然后点「重启 Peekaboo」。
+- **截图是黑的或者只有桌面？** 到 隐私与安全性 › 屏幕录制 允许 Peekaboo，然后重启它。
+- **Windows 杀毒软件报毒？** 打字统计用的是全局键盘钩子，这项技术和键盘记录器相同，个别杀毒软件会误报。它默认关闭，只计数，代码可查。
+- **内存清理为什么不是「一键释放」？** macOS 和 Windows 都会自动管理内存，强行清掉缓存只会让之后更慢。真正有效的是退出占用大、又没在用的应用，Peekaboo 帮你找出来。
+
+### 从源码构建
+
+macOS（只需要 Command Line Tools，不需要完整 Xcode）：
 
 ```bash
-git clone https://github.com/zephyrusguooo028/MacPulse.git
-cd MacPulse
-./scripts/install.sh   # builds, copies to /Applications and launches
+git clone https://github.com/zephyrusguooo028/Peekaboo.git
+cd Peekaboo
+./scripts/install.sh      # 构建并安装到 /Applications
+./scripts/make-dmg.sh     # 打包 build/Peekaboo.dmg
 ```
 
-只想构建不想安装：`./scripts/build.sh`，产物在 `build/MacPulse.app`。
-
-The app is ad-hoc signed. Some folders (Mail, Messages, Trash) need **Full Disk Access** to be measured; Settings has a shortcut to grant it.
-
-## 开发 Development
+Windows（.NET 8 SDK，在 macOS / Linux 上也能编译）：
 
 ```bash
-swift build
-.build/debug/MacPulse --selftest                 # print every reading and scan result, no UI
-.build/debug/MacPulse --icon-sheet icons.png     # render all icon frames
-.build/debug/MacPulse --snapshot shots/          # open every page and save screenshots
+cd windows/Peekaboo
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 ```
 
-Notes:
+每次推送，GitHub Actions 都会在 Windows 上编译并运行自检（读数、扫描、真实删除、模拟按键、截图编辑器）和每个页面的截图。
 
-- On recent SDKs `@State` is a macro whose plugin ships only with full Xcode, so the views use a tiny `@Local` wrapper (`Views/Components.swift`) to build with the Command Line Tools alone.
-- The menu bar item is driven through AppKit (`StatusItemController`) with cached bitmap frames; this keeps the animation cheap.
-- CPU temperature comes from a private IOHID API resolved at runtime and is best effort.
+<details>
+<summary>Windows 截图</summary>
 
-## 结构 Layout
+<img src="docs/screenshots/windows/1-overview.png" width="640">
+<img src="docs/screenshots/windows/5-cleanup.png" width="640">
+<img src="docs/screenshots/windows/0-popup.png" width="300">
+</details>
 
+---
+
+## English
+
+### Features
+
+| | |
+|---|---|
+| **Menu bar icon** | 9 animated icons (slime, ghost, chick, whale, rocket, heart…) that move faster as the CPU gets busier. Pick what shows next to it: CPU, memory, free disk, network, temperature, GPU, battery, keystrokes today |
+| **Overview** | Live charts, per-core load, 24-hour history, memory breakdown |
+| **Disk** | Treemap of where your space went; click to drill in, right-click to move to Trash |
+| **Projects** | Finds your code projects and splits source, Git history and regenerable folders like node_modules / dist |
+| **Clean up** | Developer caches, project dependencies and build output, app caches, logs, old downloads, large files — plus apps that keep the CPU busy or sit idle using lots of memory |
+| **Screenshot** | Custom hotkey, window snapping, rectangle / arrow / pen / text / mosaic (brush or box, pixelate or blur), copy, save or pin on screen |
+| **Typing stats** | Keystrokes per day, per hour, keyboard heatmap, top keys and apps. **Counts only, never what you type** |
+| **More** | Chinese / English UI, 8 theme colours, alerts, launch at login, no network access |
+
+<p>
+<img src="docs/screenshots/mac-en/0-popover-compact.png" width="300" alt="Popover">
+<img src="docs/screenshots/mac-en/5-cleanup.png" width="520" alt="Clean up">
+</p>
+
+### Install
+
+Download from [Releases](https://github.com/zephyrusguooo028/Peekaboo/releases/latest).
+
+**macOS** (`Peekaboo.dmg`): open it and drag **Peekaboo** to Applications. The app is not notarized, so the first launch is blocked: open **System Settings › Privacy & Security** and click **Open Anyway** (or run `xattr -dr com.apple.quarantine /Applications/Peekaboo.app`). Peekaboo lives in the menu bar only.
+
+**Windows** (`Peekaboo.exe`, single file): run it; if SmartScreen appears, choose **More info › Run anyway**. The icon is in the notification area — on Windows 11 drag it out of the "^" overflow to keep it visible.
+
+### How to use
+
+- **Menu bar / tray** — click the icon for the quick panel. Settings › Menu bar picks the icon and the values shown next to it (on Windows each value gets its own small tray icon).
+- **Disk** — scan your home folder, click blocks to drill in, right-click to reveal, trash or whitelist.
+- **Clean up** — scanning never deletes anything. Recommended items are pre-selected; everything goes to the Trash by default. "Free up memory and CPU" quits selected apps like ⌘Q, never forced. Only your home folder is touched; protected and whitelisted locations are always skipped.
+- **Screenshot** — default **⌥⇧A** (Windows **Alt+Shift+A**), re-recordable on the Screenshot page. Row 1 holds tools, row 2 the selected tool's options. Return / double-click copies, ⌘Z / Ctrl+Z undoes, Esc cancels, right-click re-selects. Pins can be dragged, zoomed with the wheel and closed with a double-click. macOS asks for Screen Recording permission the first time.
+- **Typing** — off by default. macOS needs Input Monitoring permission (System Settings › Privacy & Security › Input Monitoring). Only per-key and per-app counts are stored, never key order.
+
+<img src="docs/screenshots/mac-en/9-screenshot-editor.png" width="640" alt="Screenshot editor">
+
+### Privacy
+
+No network access, no telemetry. Data stays on your machine (`~/Library/Application Support/Peekaboo/` or `%LocalAppData%\Peekaboo\`). Typing stats can be wiped any time.
+
+### Build from source
+
+```bash
+git clone https://github.com/zephyrusguooo028/Peekaboo.git && cd Peekaboo
+./scripts/install.sh       # macOS: build and install to /Applications (Command Line Tools are enough)
+./scripts/make-dmg.sh      # macOS: build/Peekaboo.dmg
+cd windows/Peekaboo && dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 ```
-Sources/MacPulse/
-  App/        entry point, settings, status item, alerts, diagnostics
-  Metrics/    CPU, memory, disk, network, GPU, battery, temperature, processes, history
-  Disk/       disk tree scanner, project scanner
-  Cleanup/    cleanup candidates and the safe delete/trash executor
-  Views/      SwiftUI pages, popovers, menu bar icons
-scripts/      build.sh, install.sh, Info.plist, icon generator
-```
+
+Developer flags: `--selftest`, `--snapshot <dir> [--demo]`, `--shot-demo <dir>`, `--icon-sheet <file>`.
+On recent SDKs `@State` is a macro that ships only with full Xcode, so the views use a tiny `@Local` wrapper to build with the Command Line Tools alone.
 
 ## License
 

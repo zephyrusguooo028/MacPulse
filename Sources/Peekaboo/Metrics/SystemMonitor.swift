@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Observation
 
 struct LiveSample: Identifiable {
@@ -96,9 +97,20 @@ final class SystemMonitor {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var tick = 0
     @ObservationIgnored private var processDemand = 0
+    @ObservationIgnored var cpuAverage: [String: Double] = [:]
+    @ObservationIgnored var processSamples = 0
+    /// Last time each app (by bundle path) was in front.
+    @ObservationIgnored var lastActive: [String: Date] = [:]
+    @ObservationIgnored let startedAt = Date()
     @ObservationIgnored var onTick: ((SystemMonitor) -> Void)?
 
     private init() {
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { n in
+            guard let path = (n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleURL?.path else { return }
+            MainActor.assumeIsolated { SystemMonitor.shared.lastActive[path] = Date() }
+        }
+        if let p = NSWorkspace.shared.frontmostApplication?.bundleURL?.path { lastActive[p] = Date() }
+
         coreLetters = cpuReader.coreLetters
         coreSummary = cpuReader.summary
         history = store.points
@@ -131,6 +143,12 @@ final class SystemMonitor {
         let p = procReader.read()
         processes = p
         groups = procReader.group(p)
+        // Smoothed CPU per app, so one busy second does not make an app look "runaway".
+        let alpha = processDemand > 0 ? 0.15 : 0.4
+        var next: [String: Double] = [:]
+        for g in groups { next[g.id] = (cpuAverage[g.id] ?? g.cpu) * (1 - alpha) + g.cpu * alpha }
+        cpuAverage = next
+        processSamples += 1
     }
 
     func sample() {
@@ -150,7 +168,8 @@ final class SystemMonitor {
         } else if tick % 5 == 1 {
             temperature = tempReader.read()
         }
-        if processDemand > 0 { refreshProcesses() }
+        // Background sample every ~30 s keeps the CPU averages for the cleanup page warm.
+        if processDemand > 0 || tick % 15 == 0 { refreshProcesses() }
 
         samples.append(LiveSample(t: Date(), cpu: cpu.total, mem: memory.usedFraction, netIn: netIn, netOut: netOut))
         if samples.count > 150 { samples.removeFirst(samples.count - 150) }

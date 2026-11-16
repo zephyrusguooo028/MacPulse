@@ -231,13 +231,25 @@ enum ShotDemo {
         s.mouse = CGPoint(x: 500, y: 300)
         let host = NSHostingView(rootView: CaptureView(session: s).environment(AppState.shared))
         host.frame = NSRect(origin: .zero, size: size)
-        let win = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        let win = OverlayWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         win.contentView = host
         host.layoutSubtreeIfNeeded()
         if let r = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
             host.cacheDisplay(in: host.bounds, to: r)
             try? r.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("overlay.png"))
         }
+        // Text tool: place a field and check it receives the keyboard.
+        s.tool = .text
+        s.textAt = CGPoint(x: 300, y: 380)
+        win.makeKeyAndOrderFront(nil)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        ScreenshotController.focusTextField()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let fr = win.firstResponder
+        print("text focus: \(fr.map { String(describing: type(of: $0)) } ?? "nil") editing=\(fr is NSTextView)")
+        win.orderOut(nil)
+        s.textAt = nil
         if let img = s.export(), let tiff = img.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
             try? png.write(to: dir.appendingPathComponent("export.png"))
             print("export \(Int(img.size.width))x\(Int(img.size.height)) pt, \(NSBitmapImageRep(data: tiff)!.pixelsWide) px wide")

@@ -3,6 +3,9 @@ import SwiftUI
 struct CleanupView: View {
     @Environment(AppState.self) private var app
     @Local private var permanent = false
+    @Local private var pickedHogs: Set<String> = []
+    @Local private var hogsInitialised = false
+    @Local private var hogResult: String?
     @Local private var collapsed: Set<CleanupCategory> = [.appCache, .logs]
 
     var body: some View {
@@ -23,6 +26,8 @@ struct CleanupView: View {
                 historyCard(c).frame(width: 200)
             }
 
+            hogsCard()
+
             if let r = c.lastResult {
                 Label(r, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.disk).font(.callout)
             }
@@ -42,7 +47,11 @@ struct CleanupView: View {
             }
         }
         .padding(24)
-        .onAppear { if c.lastScan == nil && !c.scanning { rescan() } }
+        .onAppear {
+            if c.lastScan == nil && !c.scanning { rescan() }
+            app.monitor.wantProcesses(true)
+        }
+        .onDisappear { app.monitor.wantProcesses(false) }
         .onChange(of: app.projects.lastScan) { _, _ in resync() }
         .onChange(of: app.disk.lastScan) { _, _ in resync() }
     }
@@ -212,6 +221,86 @@ struct CleanupView: View {
                 if !o.skipped.isEmpty { lines.append(L("跳过 \(o.skipped.count) 项（白名单或受保护位置）", "Skipped \(o.skipped.count) items (whitelisted or protected)")) }
                 _ = FileActions.confirm(L("部分项目没有清理", "Some items weren't cleaned"), lines.joined(separator: "\n"), ok: L("好", "OK"), destructive: false)
             }
+        }
+    }
+
+    // MARK: Free up memory and CPU
+
+    @ViewBuilder
+    private func hogsCard() -> some View {
+        let hogs = ResourceHogs.find()
+        let summary = ResourceHogs.memorySummary()
+        let picked = hogs.filter { pickedHogs.contains($0.id) }
+        let color: Color = summary.level >= 4 ? Palette.danger : (summary.level >= 2 ? Palette.warn : Palette.disk)
+        Card(L("释放内存和 CPU", "Free up memory and CPU"), symbol: "memorychip", trailing: {
+            Button {
+                let list = picked
+                let names = list.prefix(8).map { "• \($0.group.name)" }.joined(separator: "\n")
+                guard FileActions.confirm(L("退出 \(list.count) 个应用？", "Quit \(list.count) apps?"),
+                                          names + L("\n\n会像 ⌘Q 一样让它们自己保存后退出，有未保存内容的应用会先询问你。",
+                                                    "\n\nThey quit like ⌘Q, so apps with unsaved work will ask you first."),
+                                          ok: L("退出", "Quit")) else { return }
+                let r = ResourceHogs.quit(list)
+                pickedHogs.subtract(list.map(\.id))
+                hogResult = L("已请求退出 \(r.count) 个应用，约可释放 \(Fmt.bytes(r.memory)) 内存",
+                              "Asked \(r.count) apps to quit, freeing about \(Fmt.bytes(r.memory))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { app.monitor.refreshProcesses() }
+            } label: {
+                Label(L("退出所选", "Quit selected"), systemImage: "xmark.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(picked.isEmpty)
+        }) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle().fill(color).frame(width: 10, height: 10).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary.title).font(.headline)
+                    Text(summary.detail).font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(Fmt.pct(app.monitor.memory.usedFraction)).font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
+                    Text(L("内存 · CPU \(Fmt.pct(app.monitor.cpu.total))", "memory · CPU \(Fmt.pct(app.monitor.cpu.total))")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let r = hogResult {
+                Label(r, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.disk).font(.callout)
+            }
+            Divider()
+            if hogs.isEmpty {
+                Text(app.monitor.processSamples < 3
+                     ? L("正在观察各个应用的占用情况，几秒后显示…", "Watching app usage, results in a few seconds…")
+                     : L("没有发现持续占用 CPU 或长时间闲置的大内存应用，一切正常。", "No busy or long-idle memory-heavy apps found. All good."))
+                    .foregroundStyle(.secondary).font(.callout)
+            }
+            ForEach(hogs) { h in
+                HStack(spacing: 10) {
+                    Toggle("", isOn: Binding(get: { pickedHogs.contains(h.id) },
+                                             set: { if $0 { pickedHogs.insert(h.id) } else { pickedHogs.remove(h.id) } }))
+                        .toggleStyle(.checkbox).labelsHidden()
+                    Image(nsImage: ProcessControl.icon(for: h.group)).resizable().frame(width: 20, height: 20)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 6) {
+                            Text(h.group.name)
+                            Text(h.kind == .cpu ? L("CPU", "CPU") : L("闲置", "Idle"))
+                                .font(.caption2).padding(.horizontal, 5).padding(.vertical, 1)
+                                .foregroundStyle(h.kind == .cpu ? Palette.danger : Palette.warn)
+                                .background(Capsule().fill((h.kind == .cpu ? Palette.danger : Palette.warn).opacity(0.12)))
+                        }
+                        Text(h.reason).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(Fmt.bytes(h.group.memory)).monospacedDigit()
+                    Text(String(format: "%.0f%%", h.group.cpu * 100)).monospacedDigit().foregroundStyle(.secondary).frame(width: 48, alignment: .trailing)
+                }
+                .font(.callout)
+            }
+            .onAppear {
+                if !hogsInitialised { pickedHogs = Set(hogs.filter(\.recommended).map(\.id)); hogsInitialised = true }
+            }
+            Text(L("只会正常退出应用（像 ⌘Q），不会强制结束；系统进程、Finder、程序坞和 Peekaboo 自己不会出现在这里。",
+                   "Apps are quit normally (like ⌘Q), never force-killed. System processes, Finder, the Dock and Peekaboo itself are never listed."))
+                .font(.caption).foregroundStyle(.tertiary)
         }
     }
 }

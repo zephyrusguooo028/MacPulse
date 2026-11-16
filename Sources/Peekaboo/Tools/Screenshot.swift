@@ -297,6 +297,25 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+extension ScreenshotController {
+    /// Makes the annotation text field first responder in whichever overlay window shows it.
+    static func focusTextField() {
+        func find(_ v: NSView) -> NSTextField? {
+            if let t = v as? NSTextField, t.isEditable { return t }
+            for s in v.subviews { if let t = find(s) { return t } }
+            return nil
+        }
+        for w in NSApp.windows where w is OverlayWindow {
+            if let content = w.contentView, let field = find(content) {
+                w.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                w.makeFirstResponder(field)
+                return
+            }
+        }
+    }
+}
+
 final class OverlayWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -455,6 +474,8 @@ struct CaptureView: View {
             if s.tool == .text, let sel = s.selection, sel.contains(g.location) {
                 if s.textAt != nil { commitText() }
                 s.textAt = g.location
+                // The field appears on the next layout pass; give it keyboard focus so typing goes into it.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { ScreenshotController.focusTextField() }
                 return
             }
             if let d = s.draft { s.marks.append(d); s.draft = nil }

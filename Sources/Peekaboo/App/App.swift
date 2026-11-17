@@ -28,6 +28,11 @@ enum Entry {
             try? lines.joined(separator: "\n").write(toFile: args[i + 1], atomically: true, encoding: .utf8)
             exit(0)
         }
+        if let i = args.firstIndex(of: "--snap-test"), i + 1 < args.count {
+            _ = NSApplication.shared
+            MainActor.assumeIsolated { WindowSnapper.selfTest(to: args[i + 1]) }
+            exit(0)
+        }
         if args.contains("--selftest") {
             SelfTest.run()
             exit(0)
@@ -37,7 +42,7 @@ enum Entry {
 }
 
 enum MainTab: String, CaseIterable, Identifiable {
-    case overview, disk, projects, processes, cleanup, typing, screenshot, battery, network, duplicates, uninstall, clipboard, settings
+    case overview, disk, projects, processes, cleanup, typing, screenshot, battery, network, duplicates, uninstall, clipboard, windows, settings
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -53,6 +58,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .duplicates: return L("重复文件", "Duplicates")
         case .uninstall: return L("卸载应用", "Uninstall")
         case .clipboard: return L("剪贴板", "Clipboard")
+        case .windows: return L("分屏", "Window layout")
         case .settings: return L("设置", "Settings")
         }
     }
@@ -70,6 +76,7 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .duplicates: return "doc.on.doc"
         case .uninstall: return "trash.square"
         case .clipboard: return "list.clipboard"
+        case .windows: return "rectangle.split.3x1"
         case .settings: return "gearshape"
         }
     }
@@ -120,6 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TypingMonitor.shared.apply()
             ScreenshotController.shared.applyHotkey()
             ClipboardService.startIfEnabled()
+            WindowSnapper.shared.start()
             Updater.shared.start()
             DesktopWidget.startIfEnabled()
             AlertManager.shared.setup()

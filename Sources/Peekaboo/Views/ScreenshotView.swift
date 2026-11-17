@@ -113,7 +113,7 @@ struct HotkeyRecorder: View {
     private func start() {
         recording = true
         hint = nil
-        Hotkeys.shared.unregister(id: 1) // so the old shortcut does not fire while recording
+        Hotkeys.shared.pause() // so existing shortcuts do not swallow the keys while recording
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
             if e.keyCode == 53 { stop(); return nil }                       // esc
             if e.keyCode == 51 && e.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty {
@@ -128,6 +128,6 @@ struct HotkeyRecorder: View {
     private func stop() {
         if let m = monitor { NSEvent.removeMonitor(m) }
         monitor = nil
-        if recording { recording = false; ScreenshotController.shared.applyHotkey() }
+        if recording { recording = false; Hotkeys.shared.resume() }
     }
 }

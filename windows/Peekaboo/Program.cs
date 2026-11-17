@@ -31,6 +31,7 @@ public static class Program
             TypingMonitor.Shared.Apply();
             Screenshot.ApplyHotkey();
             ClipboardService.Start();
+            WindowSnap.Start();
             DesktopWidget.Start();
             Updater.Start();
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
@@ -166,6 +167,8 @@ static class Snapshot
         Save(MainWindow.Instance!, Path.Combine(dir, "7-typing.png"));
 
         MainWindow.Instance!.Navigate(Page.Clipboard); await Task.Delay(1500); Save(MainWindow.Instance!, Path.Combine(dir, "10-clipboard.png"));
+
+        MainWindow.Instance!.Navigate(Page.WindowSnap); await Task.Delay(1500); Save(MainWindow.Instance!, Path.Combine(dir, "15-windows.png"));
 
         MainWindow.Instance!.Navigate(Page.Battery);
         await Task.Delay(2500);

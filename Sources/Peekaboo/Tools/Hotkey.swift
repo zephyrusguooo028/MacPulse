@@ -8,17 +8,28 @@ final class Hotkeys {
     static let shared = Hotkeys()
     private var refs: [UInt32: EventHotKeyRef] = [:]
     private var actions: [UInt32: () -> Void] = [:]
+    private var specs: [UInt32: (keyCode: UInt32, modifiers: UInt32)] = [:]
     private var installed = false
+    /// While a shortcut is being recorded, every hotkey is released so the keys reach the recorder.
+    private(set) var paused = false
 
     @discardableResult
     func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) -> Bool {
         installHandler()
         unregister(id: id)
+        specs[id] = (keyCode, modifiers)
+        actions[id] = action
+        if paused { return true }
+        return attach(id)
+    }
+
+    private func attach(_ id: UInt32) -> Bool {
+        guard let k = specs[id] else { return false }
+        let keyCode = k.keyCode, modifiers = k.modifiers
         var ref: EventHotKeyRef?
         let hkID = EventHotKeyID(signature: OSType(0x5045_4B42), id: id) // "PEKB"
         if RegisterEventHotKey(keyCode, modifiers, hkID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
             refs[id] = ref
-            actions[id] = action
             return true
         }
         return false
@@ -27,6 +38,20 @@ final class Hotkeys {
     func unregister(id: UInt32) {
         if let r = refs.removeValue(forKey: id) { UnregisterEventHotKey(r) }
         actions[id] = nil
+        specs[id] = nil
+    }
+
+    func pause() {
+        guard !paused else { return }
+        paused = true
+        for (_, r) in refs { UnregisterEventHotKey(r) }
+        refs.removeAll()
+    }
+
+    func resume() {
+        guard paused else { return }
+        paused = false
+        for id in specs.keys { _ = attach(id) }
     }
 
     fileprivate func fire(_ id: UInt32) { actions[id]?() }

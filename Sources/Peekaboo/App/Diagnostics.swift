@@ -23,6 +23,11 @@ enum SelfTest {
         print("GPU \(GPUReader.read().map { Fmt.pct($0) } ?? "nil")  TEMP \(TemperatureReader().read().map { String(format: "%.1f°C", $0) } ?? "nil")")
         if let b = BatteryReader.read() { print("BATTERY \(Fmt.pct(b.percent)) charging \(b.charging) ac \(b.onAC)") } else { print("BATTERY none") }
         print("UPTIME \(SystemInfo.uptimeText()) LOAD \(SystemInfo.loadAverage)")
+        let snapArea = CGRect(x: 0, y: 25, width: 1920, height: 1050)
+        let third = SnapAction.leftThird.target(for: .zero, in: snapArea)!
+        let tr = SnapAction.topRight.target(for: .zero, in: snapArea)!
+        let ctr = SnapAction.center.target(for: CGRect(x: 0, y: 0, width: 800, height: 600), in: snapArea)!
+        print("SNAP leftThird \(third) topRight \(tr) center \(ctr) ok=\(third.width == 640 && tr == CGRect(x: 960, y: 25, width: 960, height: 525) && ctr.minX == 560)")
 
         let p = procs.read()
         let groups = procs.group(p).sorted { $0.memory > $1.memory }
@@ -134,6 +139,8 @@ enum Snapshot {
             saveWindow(to: dir.appendingPathComponent("8-screenshot.png"))
 
             app.tab = .clipboard; try? await Task.sleep(for: .seconds(1)); saveWindow(to: dir.appendingPathComponent("10-clipboard.png"))
+
+            app.tab = .windows; try? await Task.sleep(for: .seconds(1)); saveWindow(to: dir.appendingPathComponent("15-windows.png"))
 
             app.tab = .battery
             try? await Task.sleep(for: .seconds(1.5))

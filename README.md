@@ -38,7 +38,7 @@ macOS 14+ · Windows 10/11 · 免费开源 Free & open source (MIT)
 | **分屏** | 类似 Magnet：⌃⌥ + 方向键 / 字母（Windows Ctrl+Alt）把窗口摆到半屏、四分之一、三分之一、铺满、居中、换屏；Mac 上把窗口拖到屏幕边缘也能自动分屏 |
 | **打字统计** | 每天按键数、每小时分布、键盘热力图、最常用的键和应用。**只计数，从不记录内容** |
 | **桌面小组件** | 常驻桌面的小浮窗：CPU、内存、磁盘、网速、电池、今日打字 |
-| **其他** | 中英文界面、深色 / 浅色、8 种主题色、提醒、开机自启、应用内一键更新 |
+| **其他** | 中英文界面、深色 / 浅色、8 种主题色、提醒、开机自启、应用内更新（新版本通知，可选空闲时自动安装） |
 
 <p>
 <img src="docs/screenshots/mac-zh/0-popover-compact.png" width="300" alt="菜单栏弹窗">
@@ -200,7 +200,7 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 | **Window layout** | Magnet-style: ⌃⌥ + arrow / letter (Windows Ctrl+Alt) puts a window in a half, quarter, third, full screen, center or the next display; on Mac, dragging a window to a screen edge snaps it too |
 | **Typing stats** | Keystrokes per day, per hour, keyboard heatmap, top keys and apps. **Counts only, never what you type** |
 | **Desktop widget** | A small floating panel with CPU, memory, disk, network, battery and keystrokes today |
-| **More** | Chinese / English UI, light / dark, 8 theme colours, alerts, launch at login, in-app updates |
+| **More** | Chinese / English UI, light / dark, 8 theme colours, alerts, launch at login, in-app updates (notification, optional automatic install when idle) |
 
 <p>
 <img src="docs/screenshots/mac-en/0-popover-compact.png" width="300" alt="Popover">

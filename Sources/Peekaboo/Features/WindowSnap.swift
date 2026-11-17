@@ -117,6 +117,8 @@ final class WindowSnapper {
 
     var hotkeysEnabled: Bool { didSet { UserDefaults.standard.set(hotkeysEnabled, forKey: "snap.hotkeys"); applyHotkeys() } }
     var dragEnabled: Bool { didSet { UserDefaults.standard.set(dragEnabled, forKey: "snap.drag"); applyDrag() } }
+    /// Layout buttons in the menu bar popover, like clicking Magnet's menu bar icon.
+    var showInPopover: Bool { didSet { UserDefaults.standard.set(showInPopover, forKey: "snap.popover") } }
     /// User overrides; a stored nil turns that shortcut off.
     private(set) var custom: [String: HotkeySpec?] = [:]
     /// Shortcuts another app already owns.
@@ -131,6 +133,7 @@ final class WindowSnapper {
         let d = UserDefaults.standard
         hotkeysEnabled = d.object(forKey: "snap.hotkeys") as? Bool ?? true
         dragEnabled = d.object(forKey: "snap.drag") as? Bool ?? true
+        showInPopover = d.object(forKey: "snap.popover") as? Bool ?? true
         if let data = d.data(forKey: "snap.custom"), let c = try? JSONDecoder().decode([String: HotkeySpec?].self, from: data) { custom = c }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { n in
             let pid = (n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.processIdentifier
@@ -165,6 +168,13 @@ final class WindowSnapper {
             }
         } else { out.append("no TextEdit window") }
         try? out.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// The app a click on a layout button will act on.
+    var targetAppName: String? {
+        let front = NSWorkspace.shared.frontmostApplication
+        if let front, front.processIdentifier != getpid() { return front.localizedName }
+        return lastExternalPID.flatMap { NSRunningApplication(processIdentifier: $0)?.localizedName }
     }
 
     // MARK: Shortcuts

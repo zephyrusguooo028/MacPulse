@@ -58,6 +58,16 @@ struct WindowSnapView: View {
                         Spacer(minLength: 16)
                         Toggle("", isOn: Binding(get: { s.dragEnabled }, set: { s.dragEnabled = $0 })).labelsHidden()
                     }
+                    Divider()
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L("在菜单栏弹窗里显示布局按钮", "Show layout buttons in the menu bar popover"))
+                            Text(L("点菜单栏图标，再点一个布局，就像 Magnet 的菜单一样。", "Click the menu bar icon, then a layout, like Magnet's menu."))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 16)
+                        Toggle("", isOn: Binding(get: { s.showInPopover }, set: { s.showInPopover = $0 })).labelsHidden()
+                    }
                     Text(L("点下面任意一个布局，会把你刚才在用的窗口摆过去。", "Click any layout below to apply it to the window you were just using."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -104,16 +114,17 @@ struct WindowSnapView: View {
 /// A tiny screen with the target region filled in.
 struct LayoutGlyph: View {
     let action: SnapAction
+    var compact = false
 
     var body: some View {
         GeometryReader { g in
             let r = CGRect(origin: .zero, size: g.size)
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.06))
-                RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+                RoundedRectangle(cornerRadius: compact ? 4 : 6, style: .continuous).fill(Color.primary.opacity(0.06))
+                RoundedRectangle(cornerRadius: compact ? 4 : 6, style: .continuous).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
                 if let u = action.unit {
-                    let inner = r.insetBy(dx: 4, dy: 4)
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    let inner = r.insetBy(dx: compact ? 2.5 : 4, dy: compact ? 2.5 : 4)
+                    RoundedRectangle(cornerRadius: compact ? 1.5 : 3, style: .continuous)
                         .fill(Palette.theme.gradient)
                         .frame(width: max(inner.width * u.width - 2, 2), height: max(inner.height * u.height - 2, 2))
                         .offset(x: inner.minX + inner.width * u.minX + 1, y: inner.minY + inner.height * u.minY + 1)
@@ -124,11 +135,63 @@ struct LayoutGlyph: View {
                         .offset(x: r.width * 0.25, y: r.height * 0.22)
                 } else if let sym = action.symbol {
                     Image(systemName: sym)
-                        .font(.system(size: 22, weight: .medium))
+                        .font(.system(size: compact ? 12 : 22, weight: .medium))
                         .foregroundStyle(Palette.theme)
                         .frame(width: r.width, height: r.height)
                 }
             }
         }
+    }
+}
+
+/// Layout buttons in the menu bar popover: click one to place the window you were using.
+struct PopoverSnapStrip: View {
+    @Local private var hovered: SnapAction?
+    private let order: [SnapAction] = [
+        .leftHalf, .rightHalf, .topHalf, .bottomHalf, .maximize, .center,
+        .topLeft, .topRight, .bottomLeft, .bottomRight, .leftTwoThirds, .rightTwoThirds,
+        .leftThird, .centerThird, .rightThird, .restore, .previousDisplay, .nextDisplay,
+    ]
+
+    var body: some View {
+        let s = WindowSnapper.shared
+        VStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Text(L("分屏", "Window layout")).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                Spacer()
+                Group {
+                    if Demo.active {
+                        Text(L("应用到 Safari", "Applies to Safari"))
+                    } else if !s.trusted {
+                        Text(L("点任意布局去授权", "Click a layout to grant access")).foregroundStyle(Palette.warn)
+                    } else if let h = hovered {
+                        Text(h.title + (s.hotkey(h).map { "  " + $0.title } ?? ""))
+                    } else if let app = s.targetAppName {
+                        Text(L("应用到 \(app)", "Applies to \(app)"))
+                    }
+                }
+                .font(.system(size: 11)).foregroundStyle(.tertiary).lineLimit(1)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                ForEach(order) { a in
+                    Button {
+                        StatusItemController.shared.closePopover()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { s.perform(a, fromPage: true) }
+                    } label: {
+                        LayoutGlyph(action: a, compact: true)
+                            .frame(height: 24)
+                            .padding(3)
+                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(hovered == a ? Palette.theme.opacity(0.15) : Color.clear))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hovered = $0 ? a : (hovered == a ? nil : hovered) }
+                    .help(a.title)
+                }
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.045)))
     }
 }

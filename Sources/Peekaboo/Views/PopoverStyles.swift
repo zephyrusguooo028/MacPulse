@@ -133,6 +133,7 @@ struct CompactPopover: View {
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.045)))
 
+            if WindowSnapper.shared.showInPopover { PopoverSnapStrip() }
             PopoverFooter()
         }
         .padding(14)
@@ -191,6 +192,7 @@ struct CardsPopover: View {
                 sectionTitle(L("占用最高", "Top apps"))
                 TopApps(count: 3)
             }
+            if WindowSnapper.shared.showInPopover { PopoverSnapStrip() }
             PopoverFooter()
         }
         .padding(14)
@@ -289,6 +291,7 @@ struct ChartPopover: View {
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.045)))
 
+            if WindowSnapper.shared.showInPopover { PopoverSnapStrip() }
             PopoverFooter()
         }
         .padding(14)

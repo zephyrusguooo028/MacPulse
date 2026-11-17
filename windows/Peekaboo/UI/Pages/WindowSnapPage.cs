@@ -149,7 +149,7 @@ public sealed class WindowSnapPage : PageView
         double pad = compact ? 2.5 : 4;
         if (compact && a is SnapAction.Restore or SnapAction.PrevDisplay or SnapAction.NextDisplay)
         {
-            var icon = Glyph(a switch { SnapAction.Restore => "\uE7A7", SnapAction.PrevDisplay => "\uE72A", _ => "\uE72B" }, H * 0.5, Theme.AccentBrush);
+            var icon = Glyph(a switch { SnapAction.Restore => "\uE7A7", SnapAction.PrevDisplay => "\uE72B", _ => "\uE72A" }, H * 0.5, Theme.AccentBrush);
             icon.HorizontalAlignment = HorizontalAlignment.Center;
             return new Border { Width = W, Height = H, CornerRadius = new CornerRadius(3), Background = Theme.Card, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Child = icon };
         }

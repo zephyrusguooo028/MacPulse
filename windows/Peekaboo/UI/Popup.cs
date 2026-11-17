@@ -121,8 +121,8 @@ public sealed class PopupWindow : Window
                 H(10, T(Fmt.Bytes(a.Memory), 12, color: Theme.Secondary),
                       Fixed(T(Fmt.Pct(a.Cpu), 12.5, FontWeights.Medium, a.Cpu > 0.8 ? Theme.B(Theme.DangerC) : Theme.Text), 40, right: true))));
 
-        var openBtn = Btn(L("打开主窗口", "Open main window"), () => { Close(); MainWindow.Show(Page.Overview); }, primary: true);
-        var cleanBtn = Btn(L("清理", "Clean"), () => { Close(); MainWindow.Show(Page.Cleanup); }, glyph: "");
+        var openBtn = Btn(L("打开主窗口", "Open"), () => { Close(); MainWindow.Show(Page.Overview); }, primary: true);
+        var cleanBtn = Btn(L("清理", "Clean"), () => { Close(); MainWindow.Show(Page.Cleanup); });
         var gear = Btn("", () => { Close(); MainWindow.Show(Page.Settings); }, glyph: "");
         var power = Btn("", () => Application.Current.Shutdown(), glyph: "");
         var shot = Btn("", () => { Close(); Screenshot.Start(250); }, glyph: "\uE722");

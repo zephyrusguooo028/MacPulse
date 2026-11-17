@@ -42,7 +42,7 @@ public sealed class WindowSnapPage : PageView
                                  : L($"目标窗口：{t}", $"Target window: {t}");
     }
 
-    static string ShortcutText(SnapAction a)
+    internal static string ShortcutText(SnapAction a)
     {
         if (!WindowSnap.S.Enabled) return L("快捷键已关闭", "Shortcuts off");
         if (WindowSnap.Hotkey(a) is not { } k) return L("未设置", "Not set");
@@ -60,6 +60,7 @@ public sealed class WindowSnapPage : PageView
         int inUse = WindowSnap.All.Count(WindowSnap.InUse);
         var warn = T(inUse > 0 && WindowSnap.S.Enabled ? L($"有 {inUse} 个快捷键被别的程序占用了，可以在下面换一个。", $"{inUse} shortcuts are used by another program. You can change them below.") : "", 12, color: Theme.B(Theme.DangerC));
         warn.TextWrapping = TextWrapping.Wrap;
+        var inPopup = Check(L("在托盘弹窗里显示布局按钮", "Show layout buttons in the tray popup"), WindowSnap.S.SnapInPopup, WindowSnap.SetSnapInPopup);
 
         var groups = new (string title, SnapAction[] actions)[]
         {
@@ -92,7 +93,9 @@ public sealed class WindowSnapPage : PageView
                 Tip(L("拖动窗口到屏幕边缘的分屏由 Windows 自带的「贴靠」完成；Peekaboo 额外提供三分之一布局和全套快捷键。",
                       "Dragging a window to a screen edge is handled by Windows’ own Snap; Peekaboo adds thirds and keyboard shortcuts for every layout.")),
                 warn)),
-            Card(L("布局", "Layouts"), "", V(12, V(2, _target, _result), layouts)),
+            Card(L("布局", "Layouts"), "", V(12, 
+                V(4, inPopup, Tip(L("点托盘图标，再点一个布局，就像 Magnet 的菜单一样。", "Click the tray icon, then a layout, like Magnet’s menu."))),
+                V(2, _target, _result), layouts)),
             Card(L("自定义快捷键", "Custom shortcuts"), "", keys, reset));
     }
 
@@ -125,24 +128,31 @@ public sealed class WindowSnapPage : PageView
         return tile;
     }
 
-    /// A small screen with the target region highlighted.
-    static FrameworkElement Drawing(SnapAction a)
+    /// A small screen with the target region highlighted. Below ~40 px tall (the tray popup's buttons)
+    /// Restore and the display moves become a single screen with an icon glyph.
+    internal static FrameworkElement Drawing(SnapAction a, double W = 126, double H = 72)
     {
-        const double W = 126, H = 72;
+        bool compact = H < 40;
         var canvas = new Canvas { Width = W, Height = H };
         void Screen(double x, double y, double w, double h)
         {
-            var s = new Border { Width = w, Height = h, CornerRadius = new CornerRadius(4), Background = Theme.Card, BorderBrush = Theme.Line, BorderThickness = new Thickness(1.5) };
+            var s = new Border { Width = w, Height = h, CornerRadius = new CornerRadius(compact ? 3 : 4), Background = Theme.Card, BorderBrush = Theme.Line, BorderThickness = new Thickness(compact ? 1 : 1.5) };
             Canvas.SetLeft(s, x); Canvas.SetTop(s, y); canvas.Children.Add(s);
         }
         void Region(double x, double y, double w, double h, bool solid = true)
         {
-            var r = new Border { Width = Math.Max(1, w), Height = Math.Max(1, h), CornerRadius = new CornerRadius(2.5),
+            var r = new Border { Width = Math.Max(1, w), Height = Math.Max(1, h), CornerRadius = new CornerRadius(compact ? 1.5 : 2.5),
                                  Background = solid ? Theme.B(Theme.AccentColor, 0.85) : Theme.B(Theme.AccentColor, 0.18),
                                  BorderBrush = Theme.AccentBrush, BorderThickness = new Thickness(solid ? 0 : 1.2) };
             Canvas.SetLeft(r, x); Canvas.SetTop(r, y); canvas.Children.Add(r);
         }
-        const double pad = 4;
+        double pad = compact ? 2.5 : 4;
+        if (compact && a is SnapAction.Restore or SnapAction.PrevDisplay or SnapAction.NextDisplay)
+        {
+            var icon = Glyph(a switch { SnapAction.Restore => "\uE7A7", SnapAction.PrevDisplay => "\uE72A", _ => "\uE72B" }, H * 0.5, Theme.AccentBrush);
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return new Border { Width = W, Height = H, CornerRadius = new CornerRadius(3), Background = Theme.Card, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Child = icon };
+        }
         if (a is SnapAction.PrevDisplay or SnapAction.NextDisplay)
         {
             double sw = 56, sh = 40, y = (H - sh) / 2;

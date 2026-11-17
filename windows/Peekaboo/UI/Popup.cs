@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using static Peekaboo.UIX;
@@ -13,6 +15,12 @@ public sealed class PopupWindow : Window
     readonly ContentControl _host = new();
     readonly Image _icon = new() { Width = 22, Height = 22, Stretch = Stretch.Uniform };
     readonly Dictionary<string, System.Windows.Media.Imaging.BitmapSource> _frames = new();
+    /// The layout section is built once and stays in the tree, so hover state survives the per-tick
+    /// refresh; only the parts above and below it are rebuilt.
+    readonly FrameworkElement _snap;
+    readonly ContentControl _top = new(), _bottom = new();
+    readonly TextBlock _snapHint = T("", 11, color: Theme.Tertiary);
+    SnapAction? _snapHover;
 
     public static void Toggle()
     {
@@ -30,6 +38,10 @@ public sealed class PopupWindow : Window
         Background = Theme.Window; FontFamily = Theme.Font;
         BorderBrush = Theme.Line; BorderThickness = new Thickness(1);
         Content = _host;
+        _snap = BuildSnap();
+        var root = V(12, _top, _snap, _bottom);
+        root.Margin = new Thickness(14);
+        _host.Content = root;
         bool closing = false;
         Closing += (_, _) => closing = true;
         Deactivated += (_, _) => { if (!closing) Close(); };
@@ -38,8 +50,10 @@ public sealed class PopupWindow : Window
         SystemMonitor.Shared.Ticked += Rebuild;
         TrayController.Shared.Viewer(true);
         TrayController.Shared.FrameChanged += AnimateIcon;
+        WindowSnap.Changed += Rebuild;
         Closed += (_, _) =>
         {
+            WindowSnap.Changed -= Rebuild;
             SystemMonitor.Shared.Ticked -= Rebuild;
             SystemMonitor.Shared.WantProcesses(false);
             TrayController.Shared.Viewer(false);
@@ -123,9 +137,70 @@ public sealed class PopupWindow : Window
         Grid.SetColumn(cleanBtn, 1); Grid.SetColumn(gear, 2); Grid.SetColumn(power, 3);
         footer.Children.Add(openBtn); footer.Children.Add(cleanBtn); footer.Children.Add(gear); footer.Children.Add(power);
 
-        var root = V(12, header, Panel(metrics, 12, Theme.CardAlt), Panel(apps, 12, Theme.CardAlt), footer);
-        root.Margin = new Thickness(14);
-        _host.Content = root;
+        _top.Content = V(12, header, Panel(metrics, 12, Theme.CardAlt), Panel(apps, 12, Theme.CardAlt));
+        _bottom.Content = footer;
+        // Collapsed elements take no space, margin included, so the gap goes with it.
+        _snap.Visibility = WindowSnap.S.SnapInPopup ? Visibility.Visible : Visibility.Collapsed;
+        UpdateSnapHint();
+    }
+
+    // ---- window layout buttons (Magnet's menu-bar dropdown)
+
+    static readonly SnapAction[] SnapOrder =
+    {
+        SnapAction.LeftHalf, SnapAction.RightHalf, SnapAction.TopHalf, SnapAction.BottomHalf, SnapAction.Maximize, SnapAction.Center,
+        SnapAction.TopLeft, SnapAction.TopRight, SnapAction.BottomLeft, SnapAction.BottomRight, SnapAction.LeftTwoThirds, SnapAction.RightTwoThirds,
+        SnapAction.LeftThird, SnapAction.CenterThird, SnapAction.RightThird, SnapAction.Restore, SnapAction.PrevDisplay, SnapAction.NextDisplay,
+    };
+
+    FrameworkElement BuildSnap()
+    {
+        _snapHint.MaxWidth = 180;
+        _snapHint.HorizontalAlignment = HorizontalAlignment.Right;
+        var grid = new UniformGrid { Columns = 6, Rows = 3, Margin = new Thickness(-2) };
+        foreach (var a in SnapOrder) grid.Children.Add(SnapButton(a));
+        return Panel(V(8, Row(T(L("分屏", "Window layout"), 11.5, FontWeights.Medium, Theme.Secondary), _snapHint), grid), 12, Theme.CardAlt);
+    }
+
+    FrameworkElement SnapButton(SnapAction a)
+    {
+        var drawing = WindowSnapPage.Drawing(a, 31, 18);
+        drawing.HorizontalAlignment = HorizontalAlignment.Center;
+        var b = new Border
+        {
+            Margin = new Thickness(2), Padding = new Thickness(3, 2, 3, 2), CornerRadius = new CornerRadius(5),
+            Background = Brushes.Transparent, BorderBrush = Brushes.Transparent, BorderThickness = new Thickness(1),
+            Cursor = Cursors.Hand, ToolTip = WindowSnap.Title(a), Child = drawing,
+        };
+        b.MouseEnter += (_, _) => { b.Background = Theme.AccentSoftBrush; b.BorderBrush = Theme.AccentBrush; _snapHover = a; UpdateSnapHint(); };
+        b.MouseLeave += (_, _) => { b.Background = Brushes.Transparent; b.BorderBrush = Brushes.Transparent; if (_snapHover == a) _snapHover = null; UpdateSnapHint(); };
+        b.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            if (WindowSnap.LastTarget == IntPtr.Zero)
+            {
+                _snapHint.Text = L("先点一下要排列的窗口", "Click a window to arrange first");
+                _snapHint.Foreground = Theme.B(Theme.WarnC);
+                return;
+            }
+            Close();
+            WindowSnap.ApplyToLastAndFocus(a);
+        };
+        return b;
+    }
+
+    void UpdateSnapHint()
+    {
+        _snapHint.Foreground = Theme.Tertiary;
+        if (_snapHover is { } a)
+        {
+            string name = WindowSnap.Title(a);
+            if (WindowSnap.S.Enabled && WindowSnap.Hotkey(a) is { } k && !WindowSnap.InUse(a)) name += "  " + k.Title.Replace(" + ", "+");
+            _snapHint.Text = name;
+            return;
+        }
+        var app = WindowSnap.LastTargetApp;
+        _snapHint.Text = app is null ? L("先点一下要排列的窗口", "Click a window to arrange first") : L($"应用到 {app}", $"Applies to {app}");
     }
 
     static FrameworkElement Fixed(FrameworkElement e, double width, bool right = false)

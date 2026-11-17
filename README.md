@@ -113,6 +113,7 @@ macOS 14+ · Windows 10/11 · 免费开源 Free & open source (MIT)
 
 **8. 分屏**
 - 默认快捷键和 Magnet 一样：⌃⌥←/→/↑/↓ 半屏，⌃⌥U/I/J/K 四个角，⌃⌥D/F/G 三分之一，⌃⌥E/T 三分之二，⌃⌥↩ 铺满，⌃⌥C 居中，⌃⌥⌫ 还原，⌃⌥⌘←/→ 移到另一块屏幕。Windows 把 ⌃⌥ 换成 Ctrl+Alt，换屏是 Ctrl+Alt+Win+←/→。
+- 也可以像 Magnet 菜单那样用：点菜单栏图标（Windows 托盘图标），在弹窗的「分屏」里点一个布局，刚才在用的窗口就会摆过去。
 - 「分屏」页可以改每个快捷键；点任意布局会把刚才在用的窗口摆过去。
 - Mac 上拖动窗口到屏幕边缘会出现预览：左右边缘半屏，四个角四分之一，顶部铺满，底部三分之一；把分屏后的窗口拖走会恢复原来的大小。Windows 自带拖动分屏，所以 Windows 版只加了快捷键和三分之一布局。
 - macOS 需要「辅助功能」权限，开启后立即生效，不用重启。
@@ -222,7 +223,7 @@ Download from [Releases](https://github.com/zephyrusguooo028/Peekaboo/releases/l
 - **Clean up** — scanning never deletes anything. Recommended items are pre-selected; everything goes to the Trash by default. "Free up memory and CPU" quits selected apps like ⌘Q, never forced. Only your home folder is touched; protected and whitelisted locations are always skipped.
 - **Screenshot** — default **⌥⇧A** (Windows **Alt+Shift+A**), re-recordable on the Screenshot page. Row 1 holds tools, row 2 the selected tool's options. Return / double-click copies, ⌘Z / Ctrl+Z undoes, Esc cancels, right-click re-selects. Pins can be dragged, zoomed with the wheel and closed with a double-click. macOS asks for Screen Recording permission the first time.
 - **Clipboard** — ⌥⇧V / Alt+Shift+V opens the quick picker; the Clipboard page searches, filters and pins. Optional auto-paste needs Accessibility on macOS.
-- **Window layout** — Magnet's default shortcuts: ⌃⌥←/→/↑/↓ halves, ⌃⌥U/I/J/K quarters, ⌃⌥D/F/G thirds, ⌃⌥E/T two thirds, ⌃⌥↩ maximize, ⌃⌥C center, ⌃⌥⌫ restore, ⌃⌥⌘←/→ other display (Windows: Ctrl+Alt, and Ctrl+Alt+Win+←/→). Every shortcut can be changed on the Window layout page. On Mac, drag a window to an edge (halves), corner (quarters), top (maximize) or bottom (thirds); Windows already snaps on drag. macOS needs Accessibility, which works without a restart.
+- **Window layout** — Magnet's default shortcuts: ⌃⌥←/→/↑/↓ halves, ⌃⌥U/I/J/K quarters, ⌃⌥D/F/G thirds, ⌃⌥E/T two thirds, ⌃⌥↩ maximize, ⌃⌥C center, ⌃⌥⌫ restore, ⌃⌥⌘←/→ other display (Windows: Ctrl+Alt, and Ctrl+Alt+Win+←/→). Or click the menu bar icon (Windows tray icon) and pick a layout in the popover, like Magnet's menu. Every shortcut can be changed on the Window layout page. On Mac, drag a window to an edge (halves), corner (quarters), top (maximize) or bottom (thirds); Windows already snaps on drag. macOS needs Accessibility, which works without a restart.
 - **Duplicates / Uninstall** — exact duplicates are verified byte-for-byte and one copy per group is always kept; the uninstaller also removes the app's leftovers (Windows runs the app's own uninstaller first).
 - **Battery / Network / Widget** — battery health and history, per-app network traffic (sampled only while the page is open), and a floating desktop widget from Settings.
 - **Typing** — off by default. macOS needs Input Monitoring permission (System Settings › Privacy & Security › Input Monitoring). Only per-key and per-app counts are stored, never key order.

@@ -28,6 +28,8 @@ public readonly record struct SnapRect(int Left, int Top, int Right, int Bottom)
 public sealed class WindowSnapSettings
 {
     public bool Enabled { get; set; } = true;
+    /// Show the grid of layout buttons in the tray popup (Magnet's menu-bar dropdown).
+    public bool SnapInPopup { get; set; } = true;
     /// Per-action shortcut overrides by action name. A null value disables that shortcut.
     public Dictionary<string, HotkeyData?> Overrides { get; set; } = new();
 
@@ -170,6 +172,8 @@ public static class WindowSnap
 
     public static void SetEnabled(bool on) { S.Enabled = on; S.Save(); ApplyHotkeys(); }
 
+    public static void SetSnapInPopup(bool on) { S.SnapInPopup = on; S.Save(); Changed?.Invoke(); }
+
     /// null = shortcut cleared (disabled).
     public static void SetHotkey(SnapAction a, HotkeyData? k)
     {
@@ -253,8 +257,73 @@ public static class WindowSnap
         }
     }
 
+    /// Friendly app name of the tracked window ("Notepad", from the exe's file description,
+    /// else the process name), falling back to the window title. Null when there's no target.
+    public static string? LastTargetApp
+    {
+        get
+        {
+            var h = LastTarget;
+            if (h == IntPtr.Zero) return null;
+            if (_appCache.h == h) return _appCache.name;   // the popup asks on every refresh tick
+            var name = AppNameOf(h) ?? LastTargetTitle;
+            _appCache = (h, name);
+            return name;
+        }
+    }
+
+    static (IntPtr h, string? name) _appCache;
+
+    static string? AppNameOf(IntPtr h)
+    {
+        try
+        {
+            GetWindowThreadProcessId(h, out uint pid);
+            using var p = Process.GetProcessById((int)pid);
+            string? desc = null;
+            try { desc = p.MainModule?.FileVersionInfo.FileDescription?.Trim(); } catch { }   // denied for elevated apps
+            var name = string.IsNullOrEmpty(desc) ? p.ProcessName : desc;
+            if (!string.IsNullOrEmpty(name)) return name.Length > 40 ? name[..40] + "…" : name;
+        }
+        catch { }
+        return null;
+    }
+
     /// Applies a layout to the last non-Peekaboo foreground window (tiles on the page).
     public static bool ApplyToLast(SnapAction a) => LastTarget is var h && h != IntPtr.Zero && Perform(a, h);
+
+    /// Tray popup buttons: applies the layout to the tracked window, then brings it to the front.
+    /// Call right after the user's click on a Peekaboo window, while we still may set the foreground.
+    public static bool ApplyToLastAndFocus(SnapAction a)
+    {
+        var h = LastTarget;
+        if (h == IntPtr.Zero) return false;
+        bool ok = false;
+        try { ok = Perform(a, h); } catch { }
+        Focus(h);
+        return ok;
+    }
+
+    /// SetForegroundWindow, with the usual fallbacks when Windows' foreground lock refuses it:
+    /// attach to the current foreground thread's input, then a synthetic Alt tap.
+    public static void Focus(IntPtr h)
+    {
+        if (h == IntPtr.Zero || !IsWindow(h)) return;
+        if (SetForegroundWindow(h) && GetForegroundWindow() == h) return;
+        uint me = GetCurrentThreadId();
+        uint fg = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+        bool attached = fg != 0 && fg != me && AttachThreadInput(me, fg, true);
+        try
+        {
+            BringWindowToTop(h);
+            if (SetForegroundWindow(h) && GetForegroundWindow() == h) return;
+            // Releasing Alt counts as input to this process, which unlocks SetForegroundWindow.
+            keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
+            keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            SetForegroundWindow(h);
+        }
+        finally { if (attached) AttachThreadInput(me, fg, false); }
+    }
 
     // ---- rect math (pure, checked by --selftest)
 
@@ -454,6 +523,13 @@ public static class WindowSnap
     [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+    [DllImport("user32.dll")] static extern bool AttachThreadInput(uint attach, uint to, bool on);
+    [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    const byte VK_MENU = 0x12;
+    const uint KEYEVENTF_KEYUP = 2;
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr module, WinEventProc proc, uint pid, uint thread, uint flags);
     [DllImport("user32.dll")] static extern bool UnhookWinEvent(IntPtr hook);

@@ -148,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ n: Notification) {
-        MainActor.assumeIsolated { SystemMonitor.shared.shutdown(); TypingMonitor.shared.save() }
+        MainActor.assumeIsolated { SystemMonitor.shared.shutdown(); TypingMonitor.shared.save(); Updater.shared.installOnQuit() }
     }
 }
 

@@ -16,6 +16,10 @@ public static class Program
         if (Arg(args, "--shot-demo") is { } shotDir) { ShotDemo.Run(shotDir); return 0; }
 
         using var mutex = new Mutex(true, "Peekaboo.SingleInstance", out bool first);
+        // After an update the old process starts the new exe with --background and then quits;
+        // give it a moment to let go of the mutex instead of exiting straight away.
+        if (!first && args.Contains("--background"))
+            try { first = mutex.WaitOne(TimeSpan.FromSeconds(15)); } catch (AbandonedMutexException) { first = true; }
         if (!first && Arg(args, "--snapshot") is null) return 0;
 
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -37,7 +41,8 @@ public static class Program
             if (Arg(args, "--snapshot") is { } dir) _ = Snapshot.Run(dir);
             else if (!args.Contains("--background")) MainWindow.Show(Page.Overview);
         };
-        app.Exit += (_, _) => { SystemMonitor.Shared.Shutdown(); TypingMonitor.Shared.Stop(); TrayController.Shared.Dispose(); };
+        app.SessionEnding += (_, _) => Updater.InstallOnExit();
+        app.Exit += (_, _) => { Updater.InstallOnExit(); SystemMonitor.Shared.Shutdown(); TypingMonitor.Shared.Stop(); TrayController.Shared.Dispose(); };
         app.DispatcherUnhandledException += (_, e) =>
         {
             try { File.AppendAllText(Path.Combine(Paths.Support, "errors.log"), $"{DateTime.Now:u} {e.Exception}\n\n"); } catch { }

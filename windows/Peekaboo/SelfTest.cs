@@ -73,6 +73,15 @@ static class SelfTest
             Expect("frame compensation", WindowSnap.Expand(new SnapRect(0, 0, 640, 1040), new SnapRect(93, 50, 1107, 760), new SnapRect(100, 50, 1100, 753)), new SnapRect(-7, 0, 647, 1047));
             L($"SNAP rect math ok: left third {Snap(SnapAction.LeftThird, work)}");
 
+            // Updater: idle time across the 32-bit tick wrap, and once-per-version balloons.
+            void Check(string what, bool ok) { if (!ok) throw new Exception("UPDATER " + what); }
+            Check("idle plain", Updater.IdleMs(100_000, 40_000) == 60_000);
+            Check("idle wrap", Updater.IdleMs(500, uint.MaxValue - 499) == 1000);
+            Check("notify new", Updater.ShouldNotify("1.2.0", null) && Updater.ShouldNotify("1.3.0", "1.2.0"));
+            Check("notify dedupe", !Updater.ShouldNotify("v1.2.0", "1.2.0"));
+            Check("newer", Updater.Newer("1.10.0", "1.9.3") && !Updater.Newer("1.1.0", "1.1"));
+            L($"UPDATER logic ok, idle now {Updater.IdleTime().TotalSeconds:0}s");
+
             var tree = new DiskScanEngine(500L << 20).Scan(Paths.Home);
             L($"HOME SCAN {Fmt.Bytes(tree.Size)} files {tree.FileCount}; top: {string.Join(", ", tree.Children.Take(6).Select(k => $"{k.Name} {Fmt.Bytes(k.Size)}"))}");
             L("OK");

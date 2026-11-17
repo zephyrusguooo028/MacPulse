@@ -236,6 +236,18 @@ private struct UpdateCard: View {
                 Toggle(L("自动检查更新", "Check automatically"), isOn: Binding(get: { u.autoCheck }, set: { u.autoCheck = $0 }))
                     .toggleStyle(.switch).controlSize(.small)
             }
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("自动安装更新", "Install updates automatically"))
+                    Text(L("在后台下载好，等你离开电脑一会儿或退出 Peekaboo 时自动换成新版本。关掉时，有新版本会发通知，点一下就能安装。",
+                           "Downloads in the background and switches to the new version when you're away for a while or quit Peekaboo. When off, you get a notification and install with one click."))
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(get: { u.autoInstall }, set: { u.autoInstall = $0 }))
+                    .labelsHidden().toggleStyle(.switch).controlSize(.small)
+                    .disabled(!u.autoCheck)
+            }
             switch u.state {
             case .idle, .upToDate, .failed:
                 HStack {
@@ -254,6 +266,13 @@ private struct UpdateCard: View {
                     Button(L("下载并安装", "Download and install")) { u.install() }.buttonStyle(.borderedProminent)
                     Text(L("会自动退出、替换并重新打开 Peekaboo，设置和权限都会保留。", "Peekaboo quits, replaces itself and reopens; settings and permissions are kept."))
                         .font(.caption).foregroundStyle(.secondary)
+                }
+            case .ready(let v):
+                HStack {
+                    Label(L("已下载 \(v)，空闲时会自动安装", "\(v) is downloaded and installs when you're idle"), systemImage: "checkmark.seal")
+                        .foregroundStyle(Palette.theme)
+                    Spacer()
+                    Button(L("立即安装", "Install now")) { u.install() }.buttonStyle(.borderedProminent)
                 }
             case .downloading(let p):
                 ProgressView(value: p) { Text(L("正在下载…", "Downloading…")) }

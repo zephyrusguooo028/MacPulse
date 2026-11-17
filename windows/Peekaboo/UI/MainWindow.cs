@@ -222,7 +222,8 @@ public sealed class MainWindow : Window
         SetBadge(Page.Network, NetworkPage.Badge);
         SetBadge(Page.Duplicates, DuplicatesPage.Badge);
         SetBadge(Page.Uninstall, null);
-        SetBadge(Page.Settings, Updater.State == Updater.Status.Available ? L("新版本", "Update") : null, Updater.State == Updater.Status.Available);
+        bool update = Updater.State is Updater.Status.Available or Updater.Status.Ready;
+        SetBadge(Page.Settings, update ? L("新版本", "Update") : null, update);
         SetBadge(Page.Clipboard, ClipboardPage.Badge);
         SetBadge(Page.WindowSnap, null);
         SetBadge(Page.Screenshot, null); // the shortcut is shown on the Screenshot page; it crowds the label here

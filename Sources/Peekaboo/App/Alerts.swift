@@ -17,6 +17,8 @@ final class AlertManager: NSObject, UNUserNotificationCenterDelegate {
         guard available else { return }
         let c = UNUserNotificationCenter.current()
         c.delegate = self
+        let install = UNNotificationAction(identifier: "install", title: L("安装", "Install"), options: [])
+        c.setNotificationCategories([UNNotificationCategory(identifier: "update", actions: [install], intentIdentifiers: [])])
         c.requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
@@ -75,6 +77,17 @@ final class AlertManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// One-off notification (updates), no cooldown.
+    func notify(id: String, title: String, body: String, tab: MainTab, install: Bool = false) {
+        guard available else { NSLog("Peekaboo notice: \(title) — \(body)"); return }
+        let c = UNMutableNotificationContent()
+        c.title = title
+        c.body = body
+        c.userInfo = ["tab": tab.rawValue]
+        if install { c.categoryIdentifier = "update" }
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: c, trigger: nil))
+    }
+
     private func fire(_ key: String, cooldown: TimeInterval, title: String, body: String, tab: MainTab) {
         if let l = lastFired[key], Date().timeIntervalSince(l) < cooldown { return }
         lastFired[key] = Date()
@@ -88,7 +101,9 @@ final class AlertManager: NSObject, UNUserNotificationCenterDelegate {
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler done: @escaping () -> Void) {
         let raw = response.notification.request.content.userInfo["tab"] as? String
+        let action = response.actionIdentifier
         Task { @MainActor in
+            if action == "install" { Updater.shared.install(); return }
             WindowManager.shared.show(MainTab(rawValue: raw ?? "") ?? .overview)
         }
         done()

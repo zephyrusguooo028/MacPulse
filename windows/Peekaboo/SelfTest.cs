@@ -58,6 +58,30 @@ static class SelfTest
             var rects = Treemap.Layout(new double[] { 6, 6, 4, 3, 2, 2, 1 }, new System.Windows.Rect(0, 0, 600, 400));
             L($"TREEMAP area {rects.Sum(r => r.Width * r.Height):0} of 240000");
 
+            // Window layout rect math (physical pixels, visible frame).
+            var work = new SnapRect(0, 0, 1920, 1040);
+            var none = new SnapRect(0, 0, 0, 0);
+            SnapRect Snap(SnapAction a, SnapRect w) => WindowSnap.Compute(a, w, none) ?? throw new Exception($"no rect for {a}");
+            void Expect(string what, SnapRect got, SnapRect want) { if (got != want) throw new Exception($"SNAP {what}: got {got}, want {want}"); }
+            Expect("left third", Snap(SnapAction.LeftThird, work), new SnapRect(0, 0, 640, 1040));
+            Expect("center third", Snap(SnapAction.CenterThird, work), new SnapRect(640, 0, 1280, 1040));
+            Expect("right two thirds", Snap(SnapAction.RightTwoThirds, work), new SnapRect(640, 0, 1920, 1040));
+            Expect("bottom right", Snap(SnapAction.BottomRight, work), new SnapRect(960, 520, 1920, 1040));
+            Expect("left half on 2nd display", Snap(SnapAction.LeftHalf, new SnapRect(1920, 0, 4480, 1400)), new SnapRect(1920, 0, 3200, 1400));
+            Expect("center", WindowSnap.Compute(SnapAction.Center, work, new SnapRect(10, 10, 810, 610))!.Value, new SnapRect(560, 220, 1360, 820));
+            Expect("next display", WindowSnap.MoveBetween(new SnapRect(0, 0, 960, 1040), work, new SnapRect(1920, 0, 4480, 1400)), new SnapRect(1920, 0, 3200, 1400));
+            Expect("frame compensation", WindowSnap.Expand(new SnapRect(0, 0, 640, 1040), new SnapRect(93, 50, 1107, 760), new SnapRect(100, 50, 1100, 753)), new SnapRect(-7, 0, 647, 1047));
+            L($"SNAP rect math ok: left third {Snap(SnapAction.LeftThird, work)}");
+
+            // Updater: idle time across the 32-bit tick wrap, and once-per-version balloons.
+            void Check(string what, bool ok) { if (!ok) throw new Exception("UPDATER " + what); }
+            Check("idle plain", Updater.IdleMs(100_000, 40_000) == 60_000);
+            Check("idle wrap", Updater.IdleMs(500, uint.MaxValue - 499) == 1000);
+            Check("notify new", Updater.ShouldNotify("1.2.0", null) && Updater.ShouldNotify("1.3.0", "1.2.0"));
+            Check("notify dedupe", !Updater.ShouldNotify("v1.2.0", "1.2.0"));
+            Check("newer", Updater.Newer("1.10.0", "1.9.3") && !Updater.Newer("1.1.0", "1.1"));
+            L($"UPDATER logic ok, idle now {Updater.IdleTime().TotalSeconds:0}s");
+
             var tree = new DiskScanEngine(500L << 20).Scan(Paths.Home);
             L($"HOME SCAN {Fmt.Bytes(tree.Size)} files {tree.FileCount}; top: {string.Join(", ", tree.Children.Take(6).Select(k => $"{k.Name} {Fmt.Bytes(k.Size)}"))}");
             L("OK");

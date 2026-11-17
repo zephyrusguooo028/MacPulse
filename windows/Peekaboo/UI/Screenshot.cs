@@ -144,6 +144,9 @@ public static class Screenshot
 
     internal static void Closed(ShotOverlay o) => Overlays.Remove(o);
 
+    /// A capture/editor overlay or a pinned shot is open (a restart would lose it).
+    public static bool InProgress => Overlays.Count > 0 || Pins.Count > 0;
+
     public static BitmapSource ToSource(SD.Bitmap bmp)
     {
         var h = bmp.GetHbitmap();

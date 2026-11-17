@@ -35,9 +35,10 @@ macOS 14+ · Windows 10/11 · 免费开源 Free & open source (MIT)
 | **网络** | 每个应用的上传 / 下载速率和流量（Windows 显示每个应用的连接） |
 | **截图** | 自定义快捷键，自动识别窗口，矩形 / 箭头 / 画笔 / 文字 / 马赛克（涂抹或框选，方块或模糊），**识字（OCR）**，复制、保存或贴在屏幕上 |
 | **剪贴板历史** | 复制过的文字、图片、链接、文件都留着，⌥⇧V（Windows Alt+Shift+V）随时调出搜索；自动跳过密码管理器的内容 |
+| **分屏** | 类似 Magnet：⌃⌥ + 方向键 / 字母（Windows Ctrl+Alt）把窗口摆到半屏、四分之一、三分之一、铺满、居中、换屏；Mac 上把窗口拖到屏幕边缘也能自动分屏 |
 | **打字统计** | 每天按键数、每小时分布、键盘热力图、最常用的键和应用。**只计数，从不记录内容** |
 | **桌面小组件** | 常驻桌面的小浮窗：CPU、内存、磁盘、网速、电池、今日打字 |
-| **其他** | 中英文界面、深色 / 浅色、8 种主题色、提醒、开机自启、应用内一键更新 |
+| **其他** | 中英文界面、深色 / 浅色、8 种主题色、提醒、开机自启、应用内更新（新版本通知，可选空闲时自动安装） |
 
 <p>
 <img src="docs/screenshots/mac-zh/0-popover-compact.png" width="300" alt="菜单栏弹窗">
@@ -110,18 +111,26 @@ macOS 14+ · Windows 10/11 · 免费开源 Free & open source (MIT)
 - 「剪贴板」页可以搜索、按类型筛选、置顶常用内容。密码管理器标记为「不要记录」的内容会自动跳过；历史只存在本机。
 - 打开「选中后自动粘贴」后，选中会直接粘贴到当前应用（macOS 需要「辅助功能」权限）。
 
-**8. 重复文件 / 卸载应用**
+**8. 分屏**
+- 默认快捷键和 Magnet 一样：⌃⌥←/→/↑/↓ 半屏，⌃⌥U/I/J/K 四个角，⌃⌥D/F/G 三分之一，⌃⌥E/T 三分之二，⌃⌥↩ 铺满，⌃⌥C 居中，⌃⌥⌫ 还原，⌃⌥⌘←/→ 移到另一块屏幕。Windows 把 ⌃⌥ 换成 Ctrl+Alt，换屏是 Ctrl+Alt+Win+←/→。
+- 「分屏」页可以改每个快捷键；点任意布局会把刚才在用的窗口摆过去。
+- Mac 上拖动窗口到屏幕边缘会出现预览：左右边缘半屏，四个角四分之一，顶部铺满，底部三分之一；把分屏后的窗口拖走会恢复原来的大小。Windows 自带拖动分屏，所以 Windows 版只加了快捷键和三分之一布局。
+- macOS 需要「辅助功能」权限，开启后立即生效，不用重启。
+
+<img src="docs/screenshots/mac-zh/15-windows.png" width="640" alt="分屏">
+
+**9. 重复文件 / 卸载应用**
 - 「重复文件」扫描下载、文稿、桌面、图片等目录，找出完全相同的文件（逐字节校验）和相似图片。每组至少保留一份，不可能全删。
 - 「卸载应用」列出已安装的应用，选中后会找出它在 Library（Windows 是 AppData / ProgramData）里留下的数据。Mac 上一并移到废纸篓；Windows 会先运行应用自己的卸载程序，再清理残留。
 
-**9. 电池 / 网络 / 桌面小组件**
+**10. 电池 / 网络 / 桌面小组件**
 - 「电池」显示健康度、循环次数和 7 天电量曲线（台式机没有这一项）。
 - 「网络」显示每个应用的实时网速和累计流量（只在打开这个页面时采样）。
 - 设置 › 桌面小组件 打开一个常驻桌面的小浮窗，可以拖动、选显示内容、调透明度。
 
 <img src="docs/screenshots/mac-zh/11-battery.png" width="640" alt="电池">
 
-**10. 设置**
+**11. 设置**
 - 语言（跟随系统 / 简体中文 / English）、主题色、动画图标、菜单栏内容、提醒阈值、清理规则、项目目录、白名单。
 
 ### 隐私
@@ -188,9 +197,10 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 | **Network** | Per-app upload / download rates and totals (per-app connections on Windows) |
 | **Screenshot** | Custom hotkey, window snapping, rectangle / arrow / pen / text / mosaic (brush or box, pixelate or blur), **OCR**, copy, save or pin on screen |
 | **Clipboard history** | Everything you copy, searchable with ⌥⇧V (Windows Alt+Shift+V); password-manager content is skipped |
+| **Window layout** | Magnet-style: ⌃⌥ + arrow / letter (Windows Ctrl+Alt) puts a window in a half, quarter, third, full screen, center or the next display; on Mac, dragging a window to a screen edge snaps it too |
 | **Typing stats** | Keystrokes per day, per hour, keyboard heatmap, top keys and apps. **Counts only, never what you type** |
 | **Desktop widget** | A small floating panel with CPU, memory, disk, network, battery and keystrokes today |
-| **More** | Chinese / English UI, light / dark, 8 theme colours, alerts, launch at login, in-app updates |
+| **More** | Chinese / English UI, light / dark, 8 theme colours, alerts, launch at login, in-app updates (notification, optional automatic install when idle) |
 
 <p>
 <img src="docs/screenshots/mac-en/0-popover-compact.png" width="300" alt="Popover">
@@ -212,6 +222,7 @@ Download from [Releases](https://github.com/zephyrusguooo028/Peekaboo/releases/l
 - **Clean up** — scanning never deletes anything. Recommended items are pre-selected; everything goes to the Trash by default. "Free up memory and CPU" quits selected apps like ⌘Q, never forced. Only your home folder is touched; protected and whitelisted locations are always skipped.
 - **Screenshot** — default **⌥⇧A** (Windows **Alt+Shift+A**), re-recordable on the Screenshot page. Row 1 holds tools, row 2 the selected tool's options. Return / double-click copies, ⌘Z / Ctrl+Z undoes, Esc cancels, right-click re-selects. Pins can be dragged, zoomed with the wheel and closed with a double-click. macOS asks for Screen Recording permission the first time.
 - **Clipboard** — ⌥⇧V / Alt+Shift+V opens the quick picker; the Clipboard page searches, filters and pins. Optional auto-paste needs Accessibility on macOS.
+- **Window layout** — Magnet's default shortcuts: ⌃⌥←/→/↑/↓ halves, ⌃⌥U/I/J/K quarters, ⌃⌥D/F/G thirds, ⌃⌥E/T two thirds, ⌃⌥↩ maximize, ⌃⌥C center, ⌃⌥⌫ restore, ⌃⌥⌘←/→ other display (Windows: Ctrl+Alt, and Ctrl+Alt+Win+←/→). Every shortcut can be changed on the Window layout page. On Mac, drag a window to an edge (halves), corner (quarters), top (maximize) or bottom (thirds); Windows already snaps on drag. macOS needs Accessibility, which works without a restart.
 - **Duplicates / Uninstall** — exact duplicates are verified byte-for-byte and one copy per group is always kept; the uninstaller also removes the app's leftovers (Windows runs the app's own uninstaller first).
 - **Battery / Network / Widget** — battery health and history, per-app network traffic (sampled only while the page is open), and a floating desktop widget from Settings.
 - **Typing** — off by default. macOS needs Input Monitoring permission (System Settings › Privacy & Security › Input Monitoring). Only per-key and per-app counts are stored, never key order.

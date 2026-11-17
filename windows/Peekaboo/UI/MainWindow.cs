@@ -104,7 +104,7 @@ public sealed class MainWindow : Window
         }
         Group(L("监控", "Monitor"), Page.Overview, Page.Processes, Page.Battery, Page.Network);
         Group(L("空间", "Storage"), Page.Disk, Page.Projects, Page.Cleanup, Page.Duplicates, Page.Uninstall);
-        Group(L("工具", "Tools"), Page.Screenshot, Page.Clipboard, Page.Typing);
+        Group(L("工具", "Tools"), Page.Screenshot, Page.Clipboard, Page.WindowSnap, Page.Typing);
         var gap = new Border { Height = 10 }; _nav.Children.Add(gap);
         _nav.Children.Add(NavItem(Page.Settings));
     }
@@ -131,6 +131,7 @@ public sealed class MainWindow : Window
         Page.Duplicates => (L("重复文件", "Duplicates"), "\uE8C8", Color.FromRgb(217, 140, 51)),
         Page.Uninstall => (L("卸载应用", "Uninstall"), "\uE74D", Color.FromRgb(204, 77, 89)),
         Page.Clipboard => (L("剪贴板", "Clipboard"), "\uE77F", Color.FromRgb(115, 128, 242)),
+        Page.WindowSnap => (L("分屏", "Window layout"), "\uECA5", Color.FromRgb(38, 166, 154)),
         _ => (L("设置", "Settings"), "\uE713", Color.FromRgb(140, 143, 153)),
     };
 
@@ -198,6 +199,7 @@ public sealed class MainWindow : Window
             Page.Uninstall => new UninstallPage(),
             Page.Clipboard => new ClipboardPage(),
             Page.Screenshot => new ScreenshotPage(),
+            Page.WindowSnap => new WindowSnapPage(),
             _ => new SettingsPage(),
         };
         _page.Margin = new Thickness(24, 20, 24, 24);
@@ -220,8 +222,10 @@ public sealed class MainWindow : Window
         SetBadge(Page.Network, NetworkPage.Badge);
         SetBadge(Page.Duplicates, DuplicatesPage.Badge);
         SetBadge(Page.Uninstall, null);
-        SetBadge(Page.Settings, Updater.State == Updater.Status.Available ? L("新版本", "Update") : null, Updater.State == Updater.Status.Available);
+        bool update = Updater.State is Updater.Status.Available or Updater.Status.Ready;
+        SetBadge(Page.Settings, update ? L("新版本", "Update") : null, update);
         SetBadge(Page.Clipboard, ClipboardPage.Badge);
+        SetBadge(Page.WindowSnap, null);
         SetBadge(Page.Screenshot, null); // the shortcut is shown on the Screenshot page; it crowds the label here
 
         FrameworkElement Meter(string glyph, string title, double v, string value, Color c) =>

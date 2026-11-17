@@ -211,8 +211,19 @@ public sealed class SettingsPage : PageView
 
     UIElement UpdateCard()
     {
-        var auto = Check(L("自动检查更新", "Check automatically"), S.AutoUpdate, on => { S.AutoUpdate = on; S.Save(); });
-        var body = V(10, Row(T(L($"当前版本 {Updater.Current}", $"Version {Updater.Current}"), 13), auto));
+        CheckBox? install = null;
+        var auto = Check(L("自动检查更新", "Check automatically"), S.AutoUpdate, on =>
+        {
+            S.AutoUpdate = on; S.Save();
+            if (install is not null) install.IsEnabled = on;
+            Updater.SettingsChanged();
+        });
+        install = Check(L("自动安装更新", "Install updates automatically"), S.AutoInstallUpdate, on => { S.AutoInstallUpdate = on; S.Save(); Updater.SettingsChanged(); });
+        install.IsEnabled = S.AutoUpdate;
+        var installBlock = V(2, install, Note(L("在后台下载好，等你离开电脑一会儿或退出 Peekaboo 时自动换成新版本。",
+                                                "Downloads in the background and switches to the new version when you're away for a while or quit Peekaboo.")));
+        installBlock.Margin = new Thickness(24, 0, 0, 0);
+        var body = V(10, T(L($"当前版本 {Updater.Current}", $"Version {Updater.Current}"), 13), V(6, auto, installBlock));
         switch (Updater.State)
         {
             case Updater.Status.Checking: body.Children.Add(T(L("正在检查…", "Checking…"), 12.5, color: Theme.Secondary)); break;
@@ -221,6 +232,11 @@ public sealed class SettingsPage : PageView
                 if (Updater.Notes.Length > 0) body.Children.Add(Note(Updater.Notes));
                 body.Children.Add(H(8, Btn(L("下载并安装", "Download and install"), () => _ = Updater.Install(), primary: true),
                                      T(L("会自动替换并重新打开，设置会保留。", "Peekaboo replaces itself and reopens; settings are kept."), 12, color: Theme.Secondary)));
+                break;
+            case Updater.Status.Ready:
+                body.Children.Add(T(L($"已下载 {Updater.NewVersion}，空闲时会自动安装", $"{Updater.NewVersion} is downloaded and installs when you're idle"), 14, FontWeights.SemiBold, Theme.AccentBrush));
+                if (Updater.Notes.Length > 0) body.Children.Add(Note(Updater.Notes));
+                body.Children.Add(H(8, Btn(L("立即安装", "Install now"), () => _ = Updater.Install(), primary: true)));
                 break;
             case Updater.Status.Downloading: body.Children.Add(V(4, T(L("正在下载…", "Downloading…"), 12.5), Bar(Updater.Progress, Theme.AccentColor, 6))); break;
             case Updater.Status.Installing: body.Children.Add(T(L("正在安装，马上重新打开…", "Installing, reopening shortly…"), 12.5)); break;

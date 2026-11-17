@@ -181,6 +181,8 @@ final class ScreenshotController {
     private(set) var pins: [PinWindow] = []
 
     var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
+    /// Taking a screenshot or showing pinned ones: a restart would lose them.
+    var busy: Bool { !windows.isEmpty || !pins.isEmpty }
     private(set) var hotkeyOK = true
 
     func applyHotkey() {

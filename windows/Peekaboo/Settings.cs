@@ -22,6 +22,12 @@ public sealed class Settings
     public AppLanguage Language { get; set; } = AppLanguage.System;
     public bool AutoUpdate { get; set; } = true;
     public DateTime? LastUpdateCheck { get; set; }
+    /// Download updates in the background and swap them in when idle or on quit.
+    public bool AutoInstallUpdate { get; set; }
+    /// Last version a silent check showed a balloon for, so restarts don't repeat it.
+    public string? LastNotifiedUpdate { get; set; }
+    /// Set just before the updater swaps in a new exe; the next launch shows "Updated to" once.
+    public string? UpdatedTo { get; set; }
     public double SampleInterval { get; set; } = 2;
     public bool TypingEnabled { get; set; }
     public int TypingGoal { get; set; } = 10000;

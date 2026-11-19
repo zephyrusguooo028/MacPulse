@@ -13,7 +13,7 @@
     <RootNamespace>Peekaboo</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <Product>Peekaboo</Product>
     <Description>System monitor, disk analyzer and cleaner for the Windows tray</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

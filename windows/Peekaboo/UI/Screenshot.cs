@@ -71,6 +71,30 @@ public sealed class ShotMark
     public double Width;
     /// Mosaic only: frosted blur instead of pixel blocks / painted with a brush instead of a box.
     public bool Blur, Brush;
+
+    /// A click without a real drag: dropped, so a click (or the first click of a
+    /// double-click) never leaves a stray dot.
+    public bool IsTiny
+    {
+        get
+        {
+            switch (Kind)
+            {
+                case ShotTool.Text: return false;
+                case ShotTool.Arrow: return (B - A).Length < 5;
+                case ShotTool.Pen: return Extent(Points) < 3;
+                case ShotTool.Mosaic when Brush: return Extent(Points) < 3;
+                default: var r = new Rect(A, B); return r.Width < 3 || r.Height < 3;   // rect, box mosaic
+            }
+        }
+    }
+
+    static double Extent(List<Point> pts)
+    {
+        if (pts.Count == 0) return 0;
+        double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
+        return Math.Max(x1 - x0, y1 - y0);
+    }
 }
 
 /// Global hotkey through RegisterHotKey on a hidden message window.
@@ -215,6 +239,10 @@ public sealed class ShotOverlay : Window
     double StrokeWidth => new[] { 2.0, 4.0, 7.0 }[_strokeLevel];
     double BrushWidth => new[] { 14.0, 26.0, 44.0 }[_strokeLevel];
     TextBox? _textBox;
+    /// A typed text that is selected: it can be dragged, resized from its corner, restyled or deleted.
+    ShotMark? _selText;
+    /// Current drag on a text: moving it (grab offset from its box), or resizing it from the corner handle.
+    (ShotMark Mark, Vector Offset, bool Resize, double StartSize, Rect StartRect)? _textDrag;
 
     public ShotOverlay(BitmapSource image, List<Rect> windowsPx, System.Drawing.Rectangle bounds)
     {
@@ -237,9 +265,17 @@ public sealed class ShotOverlay : Window
         };
         Loaded += (_, _) => { _scale = _image.PixelWidth / Math.Max(1, ActualWidth); Redraw(); };
         MouseMove += OnMove;
+        // Double-click is caught on the way down, before a text box under the pointer takes it.
+        PreviewMouseLeftButtonDown += OnPreviewDown;
         MouseLeftButtonDown += OnDown;
         MouseLeftButtonUp += OnUp;
-        MouseRightButtonUp += (_, _) => { if (_editing) { _editing = false; _selection = null; _marks.Clear(); _tool = null; Redraw(); } else Screenshot.CloseAll(); };
+        MouseRightButtonUp += (_, _) =>
+        {
+            if (!_editing) { Screenshot.CloseAll(); return; }
+            CloseTextBox();
+            _editing = false; _selection = null; _marks.Clear(); _tool = null; _selText = null; _draft = null;
+            Redraw();
+        };
         KeyDown += OnKey;
         Closed += (_, _) => Screenshot.Closed(this);
     }
@@ -295,7 +331,24 @@ public sealed class ShotOverlay : Window
             else if (_selection is { } sel)
             {
                 var q = new Point(Math.Clamp(p.X, sel.Left, sel.Right), Math.Clamp(p.Y, sel.Top, sel.Bottom));
-                if (_tool is null)
+                if (_textDrag is { } d)
+                {
+                    if (d.Resize)
+                    {
+                        double fx = (p.X - d.StartRect.Left) / Math.Max(d.StartRect.Width, 1);
+                        double fy = (p.Y - d.StartRect.Top) / Math.Max(d.StartRect.Height, 1);
+                        d.Mark.Width = _fontSize = Math.Clamp(d.StartSize * Math.Max((fx + fy) / 2, 0.1), 8, 220);
+                    }
+                    else
+                    {
+                        // Keep the text's box inside the selection.
+                        var r = TextRect(d.Mark);
+                        double x = Math.Clamp(p.X - d.Offset.X, sel.Left, Math.Max(sel.Left, sel.Right - Math.Min(r.Width, sel.Width)));
+                        double y = Math.Clamp(p.Y - d.Offset.Y, sel.Top, Math.Max(sel.Top, sel.Bottom - Math.Min(r.Height, sel.Height)));
+                        d.Mark.A = new Point(x - TextInset.X, y - TextInset.Y);
+                    }
+                }
+                else if (_tool is null)
                 {
                     if (_moveOffset is { } o)
                     {
@@ -318,28 +371,77 @@ public sealed class ShotOverlay : Window
             _hover = WindowAt(p);
             Redraw(p);
         }
+        else UpdateCursor(p);
+    }
+
+    /// Resize cursor over the selected text's handle, move cursor over a grabbable text.
+    void UpdateCursor(Point p)
+    {
+        Cursor c = _tool is not null ? Cursors.Cross : _selection?.Contains(p) == true ? Cursors.SizeAll : Cursors.Arrow;
+        if (_selText is { } m && _textBox is null && HandleRect(TextRect(m)).Contains(p)) c = Cursors.SizeNWSE;
+        else if ((_tool is null || _tool == ShotTool.Text) && TextHit(p) is not null) c = Cursors.SizeAll;
+        if (Cursor != c) Cursor = c;
+    }
+
+    /// Double-click inside the selection: on a typed text, edit it again; anywhere else, copy and close,
+    /// whatever tool is active (an empty text box opened by the first click is dropped first).
+    void OnPreviewDown(object s, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 2 || !_editing || _selection is not { } sel) return;
+        var p = e.GetPosition(this);
+        if (!sel.Contains(p) || e.OriginalSource is not DependencyObject d || IsInside(d, _toolbar)) return;
+        bool inBox = _textBox is not null && IsInside(d, _textBox);
+        if (inBox && !string.IsNullOrWhiteSpace(_textBox!.Text)) return;   // let the box select a word
+        e.Handled = true;
+        _draft = null;
+        _textDrag = null; _dragStart = null; _moveOffset = null;
+        ReleaseMouseCapture();
+        if (!inBox && TextHit(p) is { } m) { EditText(m); return; }
+        if (_textBox is not null && string.IsNullOrWhiteSpace(_textBox.Text)) CloseTextBox();
+        CopyAndClose();
     }
 
     void OnDown(object s, MouseButtonEventArgs e)
     {
         var p = e.GetPosition(this);
-        if (e.ClickCount == 2 && _editing && _tool is null) { CopyAndClose(); return; }
-        if (e.OriginalSource is DependencyObject d && IsInToolbar(d)) return;
+        if (e.OriginalSource is DependencyObject d && IsInside(d, _toolbar)) return;
         _dragStart = p;
         CaptureMouse();
-        if (_editing && _selection is { } sel && sel.Contains(p))
+        if (!_editing || _selection is not { } sel) return;
+        // Grab the selected text's corner handle, or any typed text, before anything else.
+        if (_selText is { } cur && _textBox is null && HandleRect(TextRect(cur)).Contains(p))
         {
-            if (_tool is null) _moveOffset = new Point(p.X - sel.X, p.Y - sel.Y);
-            else if (_tool == ShotTool.Text) { PlaceText(p); _dragStart = null; ReleaseMouseCapture(); }
-            else
+            _textDrag = (cur, default, true, cur.Width, TextRect(cur));
+            return;
+        }
+        if ((_tool is null || _tool == ShotTool.Text) && TextHit(p) is { } hit)
+        {
+            if (_textBox is not null) CommitText();
+            SelectText(hit);
+            var r = TextRect(hit);
+            _textDrag = (hit, p - r.TopLeft, false, hit.Width, r);
+            Redraw();
+            return;
+        }
+        // Clicking anywhere else deselects.
+        if (_selText is not null) { _selText = null; Redraw(); }
+        if (!sel.Contains(p)) return;
+        if (_tool is null) _moveOffset = new Point(p.X - sel.X, p.Y - sel.Y);
+        else if (_tool == ShotTool.Text)
+        {
+            PlaceText(p);
+            _selText = null;
+            _dragStart = null; ReleaseMouseCapture();
+            Redraw();
+        }
+        else
+        {
+            bool mosaic = _tool == ShotTool.Mosaic;
+            _draft = new ShotMark
             {
-                bool mosaic = _tool == ShotTool.Mosaic;
-                _draft = new ShotMark
-                {
-                    Kind = _tool.Value, A = p, B = p, Points = { p }, Color = _color,
-                    Width = mosaic ? (_mosaicBrush ? BrushWidth : 0) : StrokeWidth, Blur = mosaic && _mosaicBlur, Brush = mosaic && _mosaicBrush,
-                };
-            }
+                Kind = _tool.Value, A = p, B = p, Points = { p }, Color = _color,
+                Width = mosaic ? (_mosaicBrush ? BrushWidth : 0) : StrokeWidth, Blur = mosaic && _mosaicBlur, Brush = mosaic && _mosaicBrush,
+            };
         }
     }
 
@@ -353,8 +455,13 @@ public sealed class ShotOverlay : Window
             _selection ??= WindowAt(p) ?? new Rect(0, 0, ActualWidth, ActualHeight);
             if (_selection.Value.Width > 4 && _selection.Value.Height > 4) _editing = true; else _selection = null;
         }
-        else if (_draft is not null) { _marks.Add(_draft); _draft = null; }
-        _dragStart = null; _moveOffset = null;
+        else if (_draft is not null)
+        {
+            // A click without a real drag leaves nothing behind.
+            if (!_draft.IsTiny) { _marks.Add(_draft); _selText = null; }
+            _draft = null;
+        }
+        _dragStart = null; _moveOffset = null; _textDrag = null;
         Redraw();
     }
 
@@ -362,41 +469,130 @@ public sealed class ShotOverlay : Window
     {
         if (_textBox is not null)
         {
-            if (e.Key == Key.Enter) { CommitText(); e.Handled = true; }
-            else if (e.Key == Key.Escape) { _ui.Children.Remove(_textBox); _textBox = null; e.Handled = true; }
+            if (e.Key == Key.Enter) { CommitText(); Redraw(); e.Handled = true; }
+            else if (e.Key == Key.Escape) { CloseTextBox(); Redraw(); e.Handled = true; }
+            else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control) { Undo(); e.Handled = true; }
             return;
         }
         if (e.Key == Key.Escape) Screenshot.CloseAll();
         else if (e.Key == Key.Enter) CopyAndClose();
+        else if (e.Key is Key.Delete or Key.Back && _selText is not null) { DeleteSelected(); e.Handled = true; }
         else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control) Undo();
         else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control) CopyAndClose();
     }
 
-    void Undo() { if (_marks.Count > 0) { _marks.RemoveAt(_marks.Count - 1); DrawMarks(); } }
+    /// Undo closes an open text box; otherwise it removes the last mark.
+    void Undo()
+    {
+        if (_textBox is not null) { CloseTextBox(); Redraw(); return; }
+        if (_marks.Count > 0) { _marks.RemoveAt(_marks.Count - 1); _selText = null; Redraw(); }
+    }
 
-    void PlaceText(Point p)
+    static bool IsInside(DependencyObject? d, DependencyObject? container)
+    {
+        if (container is null) return false;
+        while (d is not null)
+        {
+            if (d == container) return true;
+            d = d is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) ?? LogicalTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+        }
+        return false;
+    }
+
+    // ---- text
+
+    /// Where a text mark's glyphs start relative to its anchor (the text box's corner).
+    static readonly Vector TextInset = new(3, 2);
+    static readonly Typeface TextFace = new(Theme.Font, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+
+    /// The box a text mark covers on screen.
+    Rect TextRect(ShotMark m)
+    {
+        var ft = new FormattedText(m.Text, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, TextFace, m.Width, Brushes.Black,
+                                   VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        return new Rect(m.A + TextInset, new Size(Math.Ceiling(ft.WidthIncludingTrailingWhitespace) + 2, Math.Ceiling(ft.Height)));
+    }
+
+    ShotMark? TextHit(Point p)
+    {
+        for (int i = _marks.Count - 1; i >= 0; i--)
+        {
+            var m = _marks[i];
+            if (m.Kind != ShotTool.Text) continue;
+            var r = TextRect(m); r.Inflate(4, 4);
+            if (r.Contains(p)) return m;
+        }
+        return null;
+    }
+
+    static Rect HandleRect(Rect r) => new(r.Right - 11, r.Bottom - 11, 22, 22);   // 12 px dot plus some slack
+
+    /// Selecting a text makes its size and colour the current ones, so the options row shows them.
+    void SelectText(ShotMark m) { _selText = m; _fontSize = m.Width; _color = m.Color; }
+
+    /// Font size / colour picked while a text is selected also restyles it.
+    void RestyleSelected(double? size = null, Color? color = null)
+    {
+        if (_selText is not { } m || _textBox is not null) return;
+        if (size is { } fs) m.Width = fs;
+        if (color is { } c) m.Color = c;
+    }
+
+    void DeleteSelected()
+    {
+        if (_selText is null) return;
+        _marks.Remove(_selText);
+        _selText = null;
+        Redraw();
+    }
+
+    /// Opens a typed text again for editing, with its own text, colour and size.
+    void EditText(ShotMark m)
+    {
+        CommitText();
+        _marks.Remove(m);
+        _selText = null;
+        _color = m.Color; _fontSize = m.Width;
+        _tool = ShotTool.Text; Cursor = Cursors.Cross;
+        PlaceText(m.A, m.Text);
+        Redraw();
+    }
+
+    void PlaceText(Point p, string text = "")
     {
         if (_textBox is not null) CommitText();
         _textBox = new TextBox
         {
-            Width = 260, FontSize = _fontSize, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(_color),
+            MinWidth = 260, Text = text, FontSize = _fontSize, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Font, Foreground = new SolidColorBrush(_color),
             Background = Brushes.Transparent, BorderBrush = new SolidColorBrush(_color), BorderThickness = new Thickness(1), Tag = p,
         };
         Canvas.SetLeft(_textBox, p.X); Canvas.SetTop(_textBox, p.Y);
         _ui.Children.Add(_textBox);
         // Focus once it is in the visual tree, otherwise typing goes nowhere.
         var box = _textBox;
-        Dispatcher.BeginInvoke(() => { Activate(); box.Focus(); Keyboard.Focus(box); }, System.Windows.Threading.DispatcherPriority.Input);
+        Dispatcher.BeginInvoke(() => { Activate(); box.Focus(); Keyboard.Focus(box); box.CaretIndex = box.Text.Length; }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
+    /// Puts the text being typed into the picture (or drops it when empty); the new text stays selected.
     void CommitText()
     {
         if (_textBox is null) return;
         if (!string.IsNullOrWhiteSpace(_textBox.Text))
-            _marks.Add(new ShotMark { Kind = ShotTool.Text, A = (Point)_textBox.Tag, Text = _textBox.Text, Color = _color, Width = _fontSize });
+        {
+            var m = new ShotMark { Kind = ShotTool.Text, A = (Point)_textBox.Tag, Text = _textBox.Text, Color = _color, Width = _fontSize };
+            _marks.Add(m);
+            _selText = m;
+        }
+        CloseTextBox();
+        DrawMarks();
+    }
+
+    void CloseTextBox()
+    {
+        if (_textBox is null) return;
         _ui.Children.Remove(_textBox);
         _textBox = null;
-        DrawMarks();
+        Focus();
     }
 
     // ---- drawing
@@ -462,7 +658,13 @@ public sealed class ShotOverlay : Window
     void Redraw(Point? mouse = null)
     {
         _ui.Children.Clear();
-        if (_textBox is not null) _ui.Children.Add(_textBox);
+        if (_textBox is not null)
+        {
+            // Size / colour picked while typing apply to the open box too.
+            _textBox.FontSize = _fontSize;
+            _textBox.Foreground = new SolidColorBrush(_color); _textBox.BorderBrush = new SolidColorBrush(_color);
+            _ui.Children.Add(_textBox);
+        }
         var hole = _selection ?? (_dragStart is null ? _hover : null);
         Geometry dim = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         if (hole is { } h) dim = new CombinedGeometry(GeometryCombineMode.Exclude, dim, new RectangleGeometry(h));
@@ -480,60 +682,98 @@ public sealed class ShotOverlay : Window
             Canvas.SetLeft(label, hr.X); Canvas.SetTop(label, Math.Max(hr.Y - 24, 4));
             _ui.Children.Add(label);
         }
+        if (_editing && _textBox is null && _selText is { } st && _marks.Contains(st)) AddTextSelection(TextRect(st));
         if (_editing && _selection is { } sel) AddToolbar(sel);
         DrawMarks();
     }
 
-    Border? _toolbar;
-    bool IsInToolbar(DependencyObject d)
+    /// Dashed box around the selected text, with the round resize handle at its bottom-right corner.
+    void AddTextSelection(Rect r)
     {
-        while (d is not null) { if (d == _toolbar) return true; d = VisualTreeHelper.GetParent(d) ?? LogicalTreeHelper.GetParent(d); }
-        return false;
+        var box = r; box.Inflate(3, 2);
+        var shadow = new Rectangle { Width = box.Width, Height = box.Height, Stroke = new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)), StrokeThickness = 2, IsHitTestVisible = false };
+        var dash = new Rectangle { Width = box.Width, Height = box.Height, Stroke = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)), StrokeThickness = 1, StrokeDashArray = { 4, 3 }, IsHitTestVisible = false };
+        foreach (var e in new[] { shadow, dash }) { Canvas.SetLeft(e, box.X); Canvas.SetTop(e, box.Y); _ui.Children.Add(e); }
+        var dot = new Ellipse { Width = 12, Height = 12, Fill = Brushes.White, Stroke = Theme.AccentBrush, StrokeThickness = 2, IsHitTestVisible = false };
+        Canvas.SetLeft(dot, r.Right - 6); Canvas.SetTop(dot, r.Bottom - 6);
+        _ui.Children.Add(dot);
     }
+
+    Border? _toolbar;
 
     void AddToolbar(Rect sel)
     {
-        Button Tool(string glyph, string tip, bool on, Action a, string? label = null)
+        var accent = Theme.AccentColor;
+        var ink = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+        // Compact icon-only tile; the tooltip carries the name and shortcut.
+        Border Tile(UIElement icon, string tip, bool on, Action a, double width = 30, Brush? fill = null, Brush? hover = null)
         {
-            // Icon with its name underneath, so tools are easy to find.
-            var icon = Glyph(glyph, 15, Brushes.Black); icon.HorizontalAlignment = HorizontalAlignment.Center;
-            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-            content.Children.Add(icon);
-            if (label is not null) content.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 2, 0, 0) });
-            var b = new Button
+            var normal = fill ?? (on ? Theme.B(accent, 0.25) : Brushes.Transparent);
+            var over = hover ?? (on ? Theme.B(accent, 0.32) : new SolidColorBrush(Color.FromArgb(22, 0, 0, 0)));
+            var b = new Border
             {
-                Content = content, MinWidth = 40, Height = label is null ? 30 : 42, Padding = new Thickness(4, 2, 4, 2), ToolTip = tip, Cursor = Cursors.Hand,
-                Background = on ? Theme.B(Theme.CpuC, 0.25) : Brushes.Transparent, BorderThickness = new Thickness(0),
+                Child = icon, Width = width, Height = 26, CornerRadius = new CornerRadius(fill is null ? 6 : 7), Margin = new Thickness(1, 0, 1, 0),
+                Background = normal, Cursor = Cursors.Hand, ToolTip = tip,
             };
-            b.Click += (_, _) => a();
+            b.MouseEnter += (_, _) => b.Background = over;
+            b.MouseLeave += (_, _) => b.Background = normal;
+            b.MouseLeftButtonUp += (_, e) => { e.Handled = true; a(); };
             return b;
         }
+        UIElement Icon(string glyph, bool on)
+        {
+            var g = Glyph(glyph, 14, on ? Theme.AccentBrush : ink);
+            g.HorizontalAlignment = HorizontalAlignment.Center;
+            return g;
+        }
+        UIElement Sep() => new Border { Width = 1, Height = 16, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(4, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
+
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        foreach (var (tool, glyph, tip) in new[] { (ShotTool.Rect, "", L("矩形", "Rectangle")), (ShotTool.Arrow, "", L("箭头", "Arrow")), (ShotTool.Pen, "", L("画笔", "Pen")), (ShotTool.Text, "", L("文字", "Text")), (ShotTool.Mosaic, "", L("马赛克", "Mosaic")) })
+        foreach (var (tool, glyph, tip) in new[]
+        {
+            (ShotTool.Rect, "", L("矩形", "Rectangle")), (ShotTool.Arrow, "", L("箭头", "Arrow")), (ShotTool.Pen, "", L("画笔", "Pen")),
+            (ShotTool.Text, "", L("文字（双击文字可再次编辑）", "Text (double-click a text to edit it)")), (ShotTool.Mosaic, "", L("马赛克 / 模糊", "Mosaic / blur")),
+        })
         {
             var t = tool;
-            row.Children.Add(Tool(glyph, tip, _tool == t, () => { _tool = _tool == t ? null : t; Cursor = _tool is null ? Cursors.SizeAll : Cursors.Cross; Redraw(); }, tip));
+            bool on = _tool == t;
+            // Icon fonts' text glyphs vary; the text tool draws a plain bold A.
+            UIElement icon = t == ShotTool.Text
+                ? new TextBlock { Text = "A", FontFamily = new FontFamily("Georgia, Cambria, Times New Roman, Segoe UI"), FontSize = 16, FontWeight = FontWeights.Bold,
+                                  Foreground = on ? Theme.AccentBrush : ink, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+                : Icon(glyph, on);
+            row.Children.Add(Tile(icon, tip, on, () =>
+            {
+                _tool = _tool == t ? null : t;
+                if (_tool != ShotTool.Text) _selText = null;
+                Cursor = _tool is null ? Cursors.SizeAll : Cursors.Cross;
+                Redraw();
+            }));
         }
-        row.Children.Add(new Border { Width = 1, Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), Margin = new Thickness(6, 4, 6, 4) });
-        row.Children.Add(Tool("", L("撤销 Ctrl+Z", "Undo Ctrl+Z"), false, Undo, L("撤销", "Undo")));
-        row.Children.Add(Tool("\uE8D3", L("识别图中文字", "Recognize text"), false, Ocr, L("识字", "OCR")));
-        row.Children.Add(Tool("", L("贴到屏幕", "Pin to screen"), false, Pin, L("贴图", "Pin")));
-        row.Children.Add(Tool("", L("保存", "Save"), false, Save, L("保存", "Save")));
-        row.Children.Add(Tool("", L("取消 Esc", "Cancel Esc"), false, Screenshot.CloseAll, L("取消", "Cancel")));
-        var copy = new Button { Content = T(L("✓ 复制", "✓ Copy"), 12.5, FontWeights.SemiBold, Brushes.White), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(4, 0, 0, 0), Background = Theme.AccentBrush, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, ToolTip = L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Enter / double-click)") };
-        copy.Click += (_, _) => CopyAndClose();
+        row.Children.Add(Sep());
+        row.Children.Add(Tile(Icon("", false), L("撤销  Ctrl+Z", "Undo  Ctrl+Z"), false, Undo));
+        row.Children.Add(Tile(Icon("", false), L("识别图中文字", "Recognize text"), false, Ocr));
+        row.Children.Add(Tile(Icon("", false), L("贴到屏幕", "Pin to screen"), false, Pin));
+        row.Children.Add(Tile(Icon("", false), L("保存到文件", "Save to file"), false, Save));
+        row.Children.Add(Sep());
+        row.Children.Add(Tile(Icon("", false), L("取消  Esc", "Cancel  Esc"), false, Screenshot.CloseAll));
+        var check = Glyph("", 13, Brushes.White); check.FontWeight = FontWeights.Bold; check.HorizontalAlignment = HorizontalAlignment.Center;
+        var copy = Tile(check, L("复制到剪贴板（回车 / 双击选区）", "Copy to clipboard (Return / double-click)"), false, CopyAndClose, 34,
+                        Theme.AccentBrush, Theme.B(Color.FromRgb((byte)(accent.R * 0.88), (byte)(accent.G * 0.88), (byte)(accent.B * 0.88))));
+        copy.Margin = new Thickness(3, 0, 1, 0);
         row.Children.Add(copy);
-        Border Panel(UIElement child) => new()
+
+        Border Panel(UIElement child, Thickness pad) => new()
         {
-            Background = new SolidColorBrush(Color.FromArgb(245, 250, 250, 250)), CornerRadius = new CornerRadius(8), Padding = new Thickness(5), Child = child,
+            Background = new SolidColorBrush(Color.FromArgb(245, 250, 250, 250)), CornerRadius = new CornerRadius(8), Padding = pad, Child = child,
             Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, ShadowDepth = 3, Opacity = 0.3 }, HorizontalAlignment = HorizontalAlignment.Left,
         };
         var rows = new StackPanel();
-        rows.Children.Add(Panel(row));
-        if (_tool is { } active)
+        rows.Children.Add(Panel(row, new Thickness(4)));
+        // Row 2: options for the selected tool, or the text options while a text is selected.
+        if ((_selText is not null && _textBox is null ? ShotTool.Text : _tool) is { } active)
         {
-            var opts = Options(active);
-            var second = Panel(opts); second.Margin = new Thickness(0, 4, 0, 0);
+            var second = Panel(Options(active), new Thickness(5)); second.Margin = new Thickness(0, 4, 0, 0);
             rows.Children.Add(second);
         }
         _toolbar = new Border { Child = rows, Cursor = Cursors.Arrow, Background = Brushes.Transparent };
@@ -566,7 +806,7 @@ public sealed class ShotOverlay : Window
                 var col = c;
                 var dot = new Border { Width = 16, Height = 16, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(c), Margin = new Thickness(3, 6, 3, 6), Cursor = Cursors.Hand,
                                        BorderBrush = _color == c ? Brushes.Black : new SolidColorBrush(Color.FromArgb(60, 0, 0, 0)), BorderThickness = new Thickness(_color == c ? 2 : 1) };
-                dot.MouseLeftButtonUp += (_, ev) => { _color = col; ev.Handled = true; Redraw(); };
+                dot.MouseLeftButtonUp += (_, ev) => { _color = col; RestyleSelected(color: col); ev.Handled = true; Redraw(); };
                 row.Children.Add(dot);
             }
         }
@@ -587,7 +827,7 @@ public sealed class ShotOverlay : Window
                 {
                     var fs = size;
                     var a = new TextBlock { Text = "A", FontSize = 8 + size / 4, FontWeight = FontWeights.SemiBold, Foreground = Brushes.Black, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-                    row.Children.Add(Chip(new Grid { Width = 20, Height = 24, Children = { a } }, Math.Abs(_fontSize - size) < 0.1, L($"{zh}（{size:0}）", $"{en} ({size:0})"), () => _fontSize = fs));
+                    row.Children.Add(Chip(new Grid { Width = 20, Height = 24, Children = { a } }, Math.Abs(_fontSize - size) < 0.5, L($"{zh}（{size:0}）", $"{en} ({size:0})"), () => { _fontSize = fs; RestyleSelected(size: fs); }));
                 }
                 row.Children.Add(Sep());
                 Colors();
@@ -679,6 +919,24 @@ public sealed class ShotOverlay : Window
         _selection = selection; _editing = true; _tool = ShotTool.Mosaic;
         _marks.AddRange(marks);
         Redraw();
+    }
+
+    /// Test hook: select the last text mark (no tool), as after clicking it.
+    public void DemoSelectText()
+    {
+        _tool = null;
+        if (_marks.LastOrDefault(m => m.Kind == ShotTool.Text) is { } m) SelectText(m);
+        Redraw();
+    }
+
+    /// Test hook: restyle the selected text and check that a click-sized pen mark is dropped.
+    public string DemoChecks()
+    {
+        RestyleSelected(size: 40);
+        var size = _selText?.Width ?? 0;
+        bool tiny = new ShotMark { Kind = ShotTool.Pen, Points = { new Point(10, 10), new Point(10, 10) }, Width = 4 }.IsTiny;
+        Redraw();
+        return $"text restyle size={size:0} tinyClickDropped={tiny}";
     }
 }
 

@@ -276,6 +276,19 @@ enum ShotDemo {
             host.cacheDisplay(in: host.bounds, to: r)
             try? r.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("overlay.png"))
         }
+        // A selected text shows its box, the resize handle and the text options.
+        s.tool = nil
+        s.selectedText = s.marks.last?.id
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        host.layoutSubtreeIfNeeded()
+        if let r = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: r)
+            try? r.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("overlay-text.png"))
+        }
+        s.restyleSelected(size: 40)
+        let tiny = ShotMark(kind: .pen([CGPoint(x: 10, y: 10), CGPoint(x: 10, y: 10)]), color: .red, width: 4).isTiny
+        print("text restyle size=\(s.marks.last?.width ?? 0) tinyClickDropped=\(tiny)")
+        s.selectedText = nil
         // Text tool: place a field and check it receives the keyboard.
         s.tool = .text
         s.textAt = CGPoint(x: 300, y: 380)

@@ -259,6 +259,11 @@ static class ShotDemo
                     var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(img)); enc.Save(fs);
                     File.WriteAllText(Path.Combine(dir, "shot.txt"), $"export {img.PixelWidth}x{img.PixelHeight}");
                 }
+                // A selected text shows its box, the resize handle and the text options.
+                o.DemoSelectText();
+                await Task.Delay(400);
+                SaveVisual((FrameworkElement)o.Content, Path.Combine(dir, "overlay-text.png"));
+                File.AppendAllText(Path.Combine(dir, "shot.txt"), Environment.NewLine + o.DemoChecks());
             }
             catch (Exception e) { File.WriteAllText(Path.Combine(dir, "shot-error.txt"), e.ToString()); }
             app.Shutdown();

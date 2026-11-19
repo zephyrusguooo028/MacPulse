@@ -38,6 +38,23 @@ struct ShotMark: Identifiable {
     var width: CGFloat
     /// Mosaic only: frosted blur instead of pixel blocks.
     var blur = false
+
+    /// A click without a real drag: dropped, so a click (or the first click of a
+    /// double-click) never leaves a stray dot.
+    var isTiny: Bool {
+        func extent(_ pts: [CGPoint]) -> CGFloat {
+            guard let f = pts.first else { return 0 }
+            var r = CGRect(origin: f, size: .zero)
+            for q in pts { r = r.union(CGRect(origin: q, size: .zero)) }
+            return max(r.width, r.height)
+        }
+        switch kind {
+        case .rect(let r), .mosaic(let r): return r.width < 3 || r.height < 3
+        case .arrow(let a, let b): return hypot(b.x - a.x, b.y - a.y) < 5
+        case .pen(let pts), .mosaicPath(let pts): return extent(pts) < 3
+        case .text: return false
+        }
+    }
 }
 
 enum ShotPalette {
@@ -124,6 +141,11 @@ final class ShotSession {
     var textAt: CGPoint?
     var textValue = ""
     var mouse: CGPoint = .zero
+    /// A typed text that is selected: it can be dragged, resized from its corner, restyled or deleted.
+    var selectedText: UUID?
+    /// Current drag on a text: moving it, or resizing it from the corner handle.
+    var textDrag: (id: UUID, offset: CGSize, resize: Bool, startSize: CGFloat, startRect: CGRect)?
+    var gestureActive = false
 
     var size: CGSize { screen.frame.size }
     var strokeWidth: CGFloat { [2, 4, 7][strokeLevel] }
@@ -148,8 +170,67 @@ final class ShotSession {
 
     func windowAt(_ p: CGPoint) -> CGRect? { windowRects.first { $0.contains(p) } }
 
+    // MARK: Text
+
+    static func textSize(_ str: String, _ size: CGFloat) -> CGSize {
+        let w = NSAttributedString(string: str, attributes: [.font: NSFont.systemFont(ofSize: size, weight: .semibold)]).size()
+        return CGSize(width: ceil(w.width) + 2, height: ceil(w.height))
+    }
+
+    func textRect(_ m: ShotMark) -> CGRect? {
+        if case .text(let at, let str) = m.kind { return CGRect(origin: at, size: Self.textSize(str, m.width)) }
+        return nil
+    }
+
+    func textHit(_ p: CGPoint) -> ShotMark? {
+        marks.reversed().first { textRect($0)?.insetBy(dx: -4, dy: -4).contains(p) == true }
+    }
+
+    static func handleRect(_ r: CGRect) -> CGRect { CGRect(x: r.maxX - 6, y: r.maxY - 6, width: 12, height: 12) }
+
+    var selectedMarkIndex: Int? { selectedText.flatMap { id in marks.firstIndex { $0.id == id } } }
+
+    /// Puts the text being typed into the picture (or drops it when empty).
+    func commitText() {
+        if let at = textAt, !textValue.trimmingCharacters(in: .whitespaces).isEmpty {
+            let m = ShotMark(kind: .text(at, textValue), color: color, width: fontSize)
+            marks.append(m)
+            selectedText = m.id
+        }
+        textAt = nil
+        textValue = ""
+    }
+
+    /// Opens a typed text again for editing.
+    func editText(_ m: ShotMark) {
+        guard case .text(let at, let str) = m.kind else { return }
+        commitText()
+        marks.removeAll { $0.id == m.id }
+        selectedText = nil
+        color = m.color
+        fontSize = m.width
+        textAt = at
+        textValue = str
+        tool = .text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { ScreenshotController.focusTextField() }
+    }
+
+    /// Font size / colour picked while a text is selected also restyles it.
+    func restyleSelected(size: CGFloat? = nil, color c: Color? = nil) {
+        guard let i = selectedMarkIndex else { return }
+        if let size { marks[i].width = size }
+        if let c { marks[i].color = c }
+    }
+
+    func deleteSelected() {
+        guard let i = selectedMarkIndex else { return }
+        marks.remove(at: i)
+        selectedText = nil
+    }
+
     /// The final image: the selection with marks burned in, at full pixel resolution.
     func export() -> NSImage? {
+        commitText()
         guard let sel = selection?.integral, sel.width > 1, sel.height > 1 else { return nil }
         let full = Image(decorative: image, scale: 1).resizable()
         let pix = pixelated.map { Image(decorative: $0, scale: 1).resizable() }
@@ -258,6 +339,8 @@ final class ScreenshotController {
                 self.finish(); return nil
             }
             if e.keyCode == 36 || e.keyCode == 76, self.sessions.allSatisfy({ $0.textAt == nil }) { self.copyAndClose(); return nil }
+            if e.keyCode == 51 || e.keyCode == 117, self.sessions.allSatisfy({ $0.textAt == nil }),
+               let s = self.sessions.first(where: { $0.selectedText != nil }) { s.deleteSelected(); return nil }
             if e.modifierFlags.contains(.command), e.charactersIgnoringModifiers == "z" { self.undo(); return nil }
             if e.modifierFlags.contains(.command), e.charactersIgnoringModifiers == "c" { self.copyAndClose(); return nil }
             return e
@@ -273,7 +356,11 @@ final class ScreenshotController {
 
     private var active: ShotSession? { sessions.first { $0.selection != nil } }
 
-    func undo() { if let s = active, !s.marks.isEmpty { s.marks.removeLast() } }
+    func undo() {
+        guard let s = active else { return }
+        if s.textAt != nil { s.textAt = nil; s.textValue = ""; return }
+        if !s.marks.isEmpty { s.marks.removeLast(); s.selectedText = nil }
+    }
 
     func copyAndClose() {
         guard let img = active?.export() else { finish(); return }
@@ -414,6 +501,18 @@ struct CaptureView: View {
             }
             .gesture(DragGesture(minimumDistance: 0).onChanged(dragChanged).onEnded(dragEnded))
 
+            if s.phase == .editing, s.textAt == nil, let i = s.selectedMarkIndex, let r = s.textRect(s.marks[i]) {
+                let box = r.insetBy(dx: -3, dy: -2)
+                Rectangle().stroke(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .background(Rectangle().stroke(Color.black.opacity(0.35), lineWidth: 2))
+                    .frame(width: box.width, height: box.height).offset(x: box.minX, y: box.minY)
+                    .allowsHitTesting(false)
+                let h = ShotSession.handleRect(r)
+                Circle().fill(Color.white).overlay(Circle().stroke(Palette.theme, lineWidth: 2))
+                    .frame(width: h.width, height: h.height).offset(x: h.minX, y: h.minY)
+                    .allowsHitTesting(false)
+            }
+
             if let at = s.textAt {
                 TextField(L("输入文字，回车完成", "Type text, press Return to finish"), text: $session.textValue)
                     .textFieldStyle(.plain)
@@ -423,7 +522,7 @@ struct CaptureView: View {
                     .padding(4)
                     .background(RoundedRectangle(cornerRadius: 4).strokeBorder(s.color.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                     .offset(x: at.x - 4, y: at.y - 4)
-                    .onSubmit { commitText() }
+                    .onSubmit { s.commitText() }
             }
 
             if s.phase == .editing, let sel = s.selection {
@@ -436,22 +535,13 @@ struct CaptureView: View {
     }
 
     private func toolbarOffset(_ sel: CGRect) -> CGSize {
-        let w: CGFloat = 560, h: CGFloat = 96
+        let w: CGFloat = 370, h: CGFloat = 76
         var x = sel.maxX - w
         x = min(max(x, 8), session.size.width - w - 8)
         var y = sel.maxY + 8
         if y + h > session.size.height - 8 { y = sel.minY - h - 8 }
         if y < 8 { y = sel.maxY - h - 8 }
         return CGSize(width: x, height: y)
-    }
-
-    private func commitText() {
-        let s = session
-        if let at = s.textAt, !s.textValue.trimmingCharacters(in: .whitespaces).isEmpty {
-            s.marks.append(ShotMark(kind: .text(at, s.textValue), color: s.color, width: s.fontSize))
-        }
-        s.textAt = nil
-        s.textValue = ""
     }
 
     private func dragChanged(_ g: DragGesture.Value) {
@@ -466,6 +556,33 @@ struct CaptureView: View {
         case .editing:
             guard let sel = s.selection else { return }
             let q = CGPoint(x: min(max(p.x, sel.minX), sel.maxX), y: min(max(p.y, sel.minY), sel.maxY))
+            if !s.gestureActive {
+                s.gestureActive = true
+                // Grab the selected text's corner handle, or any typed text, before anything else.
+                if let i = s.selectedMarkIndex, let r = s.textRect(s.marks[i]), ShotSession.handleRect(r).insetBy(dx: -5, dy: -5).contains(start) {
+                    s.textDrag = (s.marks[i].id, .zero, true, s.marks[i].width, r)
+                } else if s.tool == nil || s.tool == .text, let m = s.textHit(start), let r = s.textRect(m) {
+                    if s.textAt != nil { s.commitText() }
+                    s.selectedText = m.id
+                    s.fontSize = m.width
+                    s.color = m.color
+                    s.textDrag = (m.id, CGSize(width: start.x - r.minX, height: start.y - r.minY), false, m.width, r)
+                }
+            }
+            if let d = s.textDrag, let i = s.marks.firstIndex(where: { $0.id == d.id }), case .text(let at, let str) = s.marks[i].kind {
+                if d.resize {
+                    let fx = (p.x - d.startRect.minX) / max(d.startRect.width, 1)
+                    let fy = (p.y - d.startRect.minY) / max(d.startRect.height, 1)
+                    s.marks[i].width = min(max(d.startSize * max((fx + fy) / 2, 0.1), 8), 220)
+                    s.fontSize = s.marks[i].width
+                } else {
+                    let r = s.textRect(s.marks[i]) ?? d.startRect
+                    let x = min(max(p.x - d.offset.width, sel.minX), sel.maxX - min(r.width, sel.width))
+                    let y = min(max(p.y - d.offset.height, sel.minY), sel.maxY - min(r.height, sel.height))
+                    if CGPoint(x: x, y: y) != at { s.marks[i].kind = .text(CGPoint(x: x, y: y), str) }
+                }
+                return
+            }
             guard let tool = s.tool else {
                 // No tool: drag inside moves the selection.
                 if sel.contains(start) {
@@ -509,18 +626,29 @@ struct CaptureView: View {
             if let sel = s.selection, sel.width > 4, sel.height > 4 { s.phase = .editing } else { s.selection = nil }
         case .editing:
             s.moveOffset = nil
-            if s.tool == nil, NSApp.currentEvent?.clickCount == 2, s.selection?.contains(g.location) == true {
+            s.gestureActive = false
+            let wasTextDrag = s.textDrag != nil
+            s.textDrag = nil
+            let moved = g.translation.width.magnitude + g.translation.height.magnitude > 3
+            // Double-click: on a typed text, edit it again; anywhere else in the selection, copy.
+            if (NSApp.currentEvent?.clickCount ?? 1) >= 2, s.selection?.contains(g.location) == true {
+                s.draft = nil
+                if let m = s.textHit(g.location) { s.editText(m); return }
+                if s.textValue.trimmingCharacters(in: .whitespaces).isEmpty { s.textAt = nil }
                 ScreenshotController.shared.copyAndClose()
                 return
             }
+            if wasTextDrag { return }
+            if !moved { s.selectedText = nil }
             if s.tool == .text, let sel = s.selection, sel.contains(g.location) {
-                if s.textAt != nil { commitText() }
+                if s.textAt != nil { s.commitText(); s.selectedText = nil }
                 s.textAt = g.location
                 // The field appears on the next layout pass; give it keyboard focus so typing goes into it.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { ScreenshotController.focusTextField() }
                 return
             }
-            if let d = s.draft { s.marks.append(d); s.draft = nil }
+            if let d = s.draft, !d.isTiny { s.marks.append(d); s.selectedText = nil }
+            s.draft = nil
         }
     }
 }
@@ -556,25 +684,35 @@ private struct ShotToolbar: View {
             // Row 1: tools and actions.
             HStack(spacing: 2) {
                 ForEach(ShotTool.allCases) { t in
-                    button(t.symbol, t.title, label: t.title, selected: session.tool == t) { session.tool = session.tool == t ? nil : t }
+                    button(t.symbol, t.title, selected: session.tool == t) {
+                        session.tool = session.tool == t ? nil : t
+                        if session.tool != .text { session.selectedText = nil }
+                    }
                 }
                 divider
-                button("arrow.uturn.backward", L("撤销 ⌘Z", "Undo ⌘Z"), label: L("撤销", "Undo"), selected: false) { ScreenshotController.shared.undo() }
-                button("text.viewfinder", L("识别图中文字", "Recognize text"), label: L("识字", "OCR"), selected: false) { ScreenshotController.shared.ocr() }
-                button("pin", L("贴到屏幕", "Pin to screen"), label: L("贴图", "Pin"), selected: false) { ScreenshotController.shared.pin() }
-                button("square.and.arrow.down", L("保存", "Save"), label: L("保存", "Save"), selected: false) { ScreenshotController.shared.save() }
-                button("xmark", L("取消 Esc", "Cancel Esc"), label: L("取消", "Cancel"), selected: false) { ScreenshotController.shared.finish() }
+                button("arrow.uturn.backward", L("撤销  ⌘Z", "Undo  ⌘Z"), selected: false) { ScreenshotController.shared.undo() }
+                button("text.viewfinder", L("识别图中文字", "Recognize text"), selected: false) { ScreenshotController.shared.ocr() }
+                button("pin", L("贴到屏幕", "Pin to screen"), selected: false) { ScreenshotController.shared.pin() }
+                button("square.and.arrow.down", L("保存到文件", "Save to file"), selected: false) { ScreenshotController.shared.save() }
+                divider
+                button("xmark", L("取消  Esc", "Cancel  Esc"), selected: false) { ScreenshotController.shared.finish() }
                 Button { ScreenshotController.shared.copyAndClose() } label: {
-                    Label(L("复制", "Copy"), systemImage: "checkmark").font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 26)
+                        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.theme.gradient))
+                        .contentShape(RoundedRectangle(cornerRadius: 7))
                 }
-                .buttonStyle(.borderedProminent).controlSize(.regular).help(L("复制到剪贴板（回车 / 双击）", "Copy to clipboard (Return / double-click)"))
-                .padding(.leading, 6)
+                .buttonStyle(.plain)
+                .help(L("复制到剪贴板（回车 / 双击选区）", "Copy to clipboard (Return / double-click)"))
+                .padding(.leading, 2)
             }
-            .padding(5)
+            .padding(4)
             .background(panel)
 
             // Row 2: options for the selected tool, like WeChat's screenshot bar.
-            if let tool = session.tool {
+            if let tool = session.selectedText != nil && session.textAt == nil ? ShotTool.text : session.tool {
                 HStack(spacing: 6) { options(for: tool) }
                     .padding(.horizontal, 8).padding(.vertical, 5)
                     .background(panel)
@@ -583,6 +721,7 @@ private struct ShotToolbar: View {
         }
         .tint(Palette.theme)
         .animation(.easeOut(duration: 0.15), value: session.tool)
+        .animation(.easeOut(duration: 0.15), value: session.selectedText)
     }
 
     private var panel: some View {
@@ -596,9 +735,9 @@ private struct ShotToolbar: View {
         switch tool {
         case .text:
             ForEach(Array([(14, "小", "S"), (20, "中", "M"), (28, "大", "L"), (40, "特大", "XL"), (56, "超大", "XXL")].enumerated()), id: \.offset) { _, f in
-                chip(selected: session.fontSize == CGFloat(f.0), help: L("字号 \(f.0)", "Font size \(f.0)")) {
+                chip(selected: abs(session.fontSize - CGFloat(f.0)) < 0.5, help: L("字号 \(f.0)", "Font size \(f.0)")) {
                     Text("A").font(.system(size: CGFloat(8 + f.0 / 4), weight: .semibold)).frame(width: 20, height: 20)
-                } action: { session.fontSize = CGFloat(f.0) }
+                } action: { session.fontSize = CGFloat(f.0); session.restyleSelected(size: CGFloat(f.0)) }
             }
             divider
             colors
@@ -623,7 +762,7 @@ private struct ShotToolbar: View {
                 .overlay(Circle().stroke(session.color == c ? Color.primary : Color.primary.opacity(0.2), lineWidth: session.color == c ? 2 : 1))
                 .padding(3)
                 .contentShape(Rectangle())
-                .onTapGesture { session.color = c }
+                .onTapGesture { session.color = c; session.restyleSelected(color: c) }
         }
     }
 
@@ -655,19 +794,19 @@ private struct ShotToolbar: View {
         .buttonStyle(.plain).help(help)
     }
 
-    private var divider: some View { Divider().frame(height: 20).padding(.horizontal, 4) }
+    private var divider: some View { Divider().frame(height: 18).padding(.horizontal, 3) }
 
-    private func button(_ symbol: String, _ help: String, label: String, selected: Bool, _ action: @escaping () -> Void) -> some View {
+    private func button(_ symbol: String, _ help: String, selected: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            // Icon with its name underneath, so tools are easy to find.
-            VStack(spacing: 2) {
-                Image(systemName: symbol).font(.system(size: 14, weight: .medium)).frame(height: 18)
-                Text(label).font(.system(size: 10, weight: .medium)).lineLimit(1)
+            Group {
+                // SF Symbols' text glyphs get localized ("字", "格式"), so the text tool draws a plain A.
+                if symbol == ShotTool.text.symbol { Text("A").font(.system(size: 15, weight: .semibold, design: .serif)) }
+                else { Image(systemName: symbol).font(.system(size: 14, weight: .medium)) }
             }
-            .frame(minWidth: 40)
-            .padding(.horizontal, 3).padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
-            .contentShape(RoundedRectangle(cornerRadius: 6))   // whole tile is clickable, not just the glyph
+                .frame(width: 30, height: 26)
+                .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.theme.opacity(0.25) : .clear))
+                .foregroundStyle(selected ? Palette.theme : Color.primary)
+                .contentShape(RoundedRectangle(cornerRadius: 6))   // whole tile is clickable, not just the glyph
         }
         .buttonStyle(.plain).help(help)
     }

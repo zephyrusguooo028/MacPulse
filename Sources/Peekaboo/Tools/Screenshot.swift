@@ -260,6 +260,8 @@ final class ScreenshotController {
     private var sessions: [ShotSession] = []
     private var monitors: [Any] = []
     private(set) var pins: [PinWindow] = []
+    private var returnTo: NSRunningApplication?
+    private var returnToSelf = false
 
     var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
     /// Taking a screenshot or showing pinned ones: a restart would lose them.
@@ -285,6 +287,12 @@ final class ScreenshotController {
             }
             return
         }
+        // Remember who had the keyboard, so it gets it back afterwards. Without this the
+        // overlay leaves Peekaboo in front, and macOS then brings up Peekaboo's own window
+        // (or whichever window is next), which can be on another desktop.
+        let front = NSWorkspace.shared.frontmostApplication
+        returnTo = front?.processIdentifier == getpid() ? WindowSnapper.shared.lastExternalApp : front
+        returnToSelf = front?.processIdentifier == getpid() && WindowManager.shared.window?.isKeyWindow == true
         Task { @MainActor in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             await capture()
@@ -406,10 +414,22 @@ final class ScreenshotController {
     func finish() {
         for m in monitors { NSEvent.removeMonitor(m) }
         monitors.removeAll()
+        let hadOverlay = !windows.isEmpty
         for w in windows { w.orderOut(nil) }
         windows.removeAll()
         sessions.removeAll()
         NSCursor.pop()
+        guard hadOverlay else { return }
+        // Hand the keyboard back to the app that had it before the screenshot.
+        if returnToSelf {
+            WindowManager.shared.window?.makeKeyAndOrderFront(nil)
+        } else if let app = returnTo, !app.isTerminated {
+            app.activate()
+        } else if WindowManager.shared.window?.isVisible != true {
+            NSApp.deactivate()   // not hide(): that would also hide pinned screenshots
+        }
+        returnTo = nil
+        returnToSelf = false
     }
 }
 

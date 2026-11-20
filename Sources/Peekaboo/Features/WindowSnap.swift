@@ -170,6 +170,9 @@ final class WindowSnapper {
         try? out.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
     }
 
+    /// The last app other than Peekaboo that was in front.
+    var lastExternalApp: NSRunningApplication? { lastExternalPID.flatMap { NSRunningApplication(processIdentifier: $0) } }
+
     /// The app a click on a layout button will act on.
     var targetAppName: String? {
         let front = NSWorkspace.shared.frontmostApplication

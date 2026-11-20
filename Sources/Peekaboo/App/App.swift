@@ -136,6 +136,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else if !Demo.active {
                 OnboardingWindow.showIfNeeded()
             }
+            if let i = CommandLine.arguments.firstIndex(of: "--shot-focus-test"), i + 1 < CommandLine.arguments.count {
+                let out = CommandLine.arguments[i + 1]
+                let before = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "nil"
+                ScreenshotController.shared.start()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    let during = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "nil"
+                    ScreenshotController.shared.finish()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        let after = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "nil"
+                        try? "before=\(before) during=\(during) after=\(after)".write(toFile: out, atomically: true, encoding: .utf8)
+                        NSApp.terminate(nil)
+                    }
+                }
+            }
             if CommandLine.arguments.contains("--open") {
                 WindowManager.shared.show(.overview)
             }

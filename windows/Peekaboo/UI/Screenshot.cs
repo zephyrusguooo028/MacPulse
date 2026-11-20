@@ -142,6 +142,11 @@ public static class Screenshot
     public static async void Start(int delayMs = 0)
     {
         if (Overlays.Count > 0) return;
+        // Remember who had the keyboard so it gets it back afterwards; otherwise Windows
+        // activates whatever window is next in line (often Peekaboo's own window).
+        var fg = GetForegroundWindow();
+        GetWindowThreadProcessId(fg, out uint pid);
+        _returnTo = pid == (uint)Environment.ProcessId ? WindowSnap.LastTarget : fg;
         if (delayMs > 0) await Task.Delay(delayMs);
         var windows = WindowRects();
         foreach (var screen in System.Windows.Forms.Screen.AllScreens)
@@ -166,7 +171,21 @@ public static class Screenshot
         Overlays.Clear();
     }
 
-    internal static void Closed(ShotOverlay o) => Overlays.Remove(o);
+    internal static void Closed(ShotOverlay o)
+    {
+        Overlays.Remove(o);
+        if (Overlays.Count == 0 && _returnTo != IntPtr.Zero)
+        {
+            var h = _returnTo;
+            _returnTo = IntPtr.Zero;
+            if (IsWindow(h)) WindowSnap.Focus(h);
+        }
+    }
+
+    static IntPtr _returnTo;
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 
     /// A capture/editor overlay or a pinned shot is open (a restart would lose it).
     public static bool InProgress => Overlays.Count > 0 || Pins.Count > 0;
